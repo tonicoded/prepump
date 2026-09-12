@@ -232,10 +232,18 @@ async function launch() {
   // are owed whatever the buy is. Done in lamports and floored, so the buy can
   // never round its way past what the wallet actually holds.
   const BASE_FEE_LAMPORTS = 10_000;
+  // Distributing afterwards costs rent for every recipient's token account and
+  // leaves the wallet needing to stay rent-exempt. Hold that back from the buy,
+  // or the launch succeeds and the payout cannot be paid for.
+  const payoutLamports = Math.ceil(
+    (record.deposits.length * config.payoutRentSol + config.walletFloorSol) * 1e9,
+  );
   const flatLamports =
     Math.ceil(
       (config.createCostSol + config.priorityFee + config.reserveSol) * 1e9,
-    ) + BASE_FEE_LAMPORTS;
+    ) +
+    BASE_FEE_LAMPORTS +
+    payoutLamports;
   const overhead = flatLamports / 1e9;
 
   // Spending b on the buy costs b * (1 + fee), so the affordable buy is the
@@ -266,6 +274,9 @@ async function launch() {
   console.log(`  Pooled           ${pooledSol.toFixed(4)} SOL from ${record.deposits.length} wallets`);
   console.log(
     `  Rent + fees      ${C.dim(`${overhead.toFixed(6)} SOL + ${config.buyFeePercent}% of the buy`)}`,
+  );
+  console.log(
+    `  ${C.dim(`of which ${(payoutLamports / 1e9).toFixed(6)} SOL is held back to pay ${record.deposits.length} depositor(s)`)}`,
   );
   console.log(`  Buying with      ${C.bold(`${buySol} SOL`)}${buySol === 0 ? C.dim("  (create only, no buy)") : ""}`);
   if (Number.isFinite(forced)) console.log(C.dim(`  Buy forced with --buy ${forced}`));

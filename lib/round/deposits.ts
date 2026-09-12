@@ -128,7 +128,8 @@ export async function scanDeposits(
 
       const current = totals.get(sender) ?? { lamports: 0, signatures: [] };
       current.lamports += credited;
-      current.signatures.push(batch[index]);
+      // Not batch[index]: the RPC may answer out of order.
+      current.signatures.push(tx.transaction.signatures[0] ?? batch[index]);
       totals.set(sender, current);
     });
 

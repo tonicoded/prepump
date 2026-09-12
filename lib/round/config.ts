@@ -26,6 +26,10 @@ export type RoundConfig = {
   createCostSol: number;
   /** pump.fun's cut of the dev buy, as a percentage of it. */
   buyFeePercent: number;
+  /** Rent for one recipient's token account, held back from the buy. */
+  payoutRentSol: number;
+  /** The wallet must stay rent-exempt itself, or its transactions are rejected. */
+  walletFloorSol: number;
   /** Used when a round has no deposits, or in the dev portal. */
   fallbackBuySol: number;
 
@@ -91,6 +95,8 @@ export function readRoundConfig(env = process.env): RoundConfig {
     reserveSol: num(env.ROUND_RESERVE_SOL, 0),
     createCostSol: num(env.ROUND_CREATE_COST_SOL, 0.009),
     buyFeePercent: num(env.PUMPFUN_BUY_FEE_PERCENT, 2),
+    payoutRentSol: num(env.PAYOUT_RENT_SOL, 0.0017),
+    walletFloorSol: num(env.WALLET_FLOOR_SOL, 0.002),
     fallbackBuySol: num(env.PUMPFUN_DEV_BUY_SOL, 0.01),
 
     devCutPercent: num(env.DEV_CUT_PERCENT, 2),
