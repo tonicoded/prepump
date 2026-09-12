@@ -167,7 +167,7 @@ npm run round -- status              # config, wallet, balance, window
 npm run round -- scan                # who deposited what
 npm run round -- launch --yes        # generate the meme, create it on pump.fun
 npm run round -- distribute --yes    # send every depositor their share
-npm run round -- rewards --yes       # pass creator fees on to holders
+npm run round -- rewards --yes       # claim creator fees to the dev wallet
 npm run round -- go --yes            # launch, then distribute
 npm run round -- auto --yes          # wait for T-0, then do all of it
 ```
@@ -205,15 +205,16 @@ keeps `DEV_CUT_PERCENT`, and splits the rest strictly in proportion to each
 wallet's deposit. Payouts go out five per transaction, each one recorded in the
 round file, so re-running the command retries only what failed.
 
-**Creator rewards go to holders.** pump.fun pays the coin's creator a share of
-every trade, into a vault owned by the creator wallet. `rewards` claims that and
-splits it over whoever holds the coin at that moment, in proportion to their
-balance. The creator keeps `DEV_CUT_PERCENT`, which is 0.
+**Creator rewards.** pump.fun pays the coin's creator a share of every trade,
+into a vault owned by the creator wallet. `rewards` claims that into the dev
+wallet, which is the default.
 
-The bonding curve holds the unsold supply, so it is excluded, as is the creator
-wallet itself. Shares below `--min` (0.00001 SOL by default) are dropped rather
-than costing more in fees than they are worth. If nobody holds the coin, nothing
-is claimed and the vault keeps the SOL until someone does.
+Add `--split` to share it with holders instead: it snapshots who holds the coin
+at that moment and pays out in proportion to their balance, keeping
+`DEV_CUT_PERCENT` back. The bonding curve holds the unsold supply so it is
+excluded, as is the creator wallet itself, and shares below `--min` (0.00001 SOL)
+are dropped rather than costing more in fees than they are worth. If nobody
+holds the coin, nothing is claimed and the vault keeps the SOL.
 
 The vault is per creator wallet, not per coin, so fees from several launches
 pool together. `--mint <address>` picks whose holders get the payout.

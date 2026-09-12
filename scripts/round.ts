@@ -413,10 +413,12 @@ async function rewards() {
 
   console.log(`  Holders          ${holders.length} wallets hold the coin`);
 
-  // --keep claims into the creator wallet and stops there.
-  if (flag("keep")) {
+  // Claiming into the creator wallet is the default; --split shares it out.
+  if (!flag("split")) {
     if (pending <= 0) die("There is nothing to claim.");
-    if (!flag("yes")) die("Add --yes to claim into the creator wallet.");
+    if (!flag("yes")) {
+      die("Add --yes to claim into the creator wallet, or --split to share it with holders.");
+    }
     process.stdout.write("\n  Claiming to the creator wallet… ");
     const signature = await collectCreatorFees(config);
     console.log(C.green("done"));
@@ -565,8 +567,8 @@ try {
         "  --no-art      launch even if the artwork failed",
         "  --mint <addr> which coin's holders get the rewards",
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
-        "  --keep        claim creator fees into your own wallet, do not split",
-        "  --rewards     with `auto`, also pass creator fees on after the launch",
+        "  --split       share creator fees with holders instead of keeping them",
+        "  --rewards     with `auto`, also claim creator fees after the launch",
         "",
       ].join("\n"),
     );
