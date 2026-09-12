@@ -22,10 +22,53 @@ import {
 import { browserRpcUrl, waitForConfirmation } from "@/lib/round/rpc";
 import { useWallet } from "@/providers/WalletProvider";
 import { shortAddress } from "@/lib/format";
+import {
+  DEFAULT_MEME_MODE,
+  MEME_MODES,
+  type MemeMode,
+} from "@/lib/round/meme-modes";
 
-const STORAGE_KEY = "prepump.dev.round.v2";
+// Bump when persisted round semantics change. v3 clears legacy pools that
+// remained visible after their coin had already launched.
+const STORAGE_KEY = "prepump.dev.round.v3";
 const MYSTERY_ART = "/meme-mystery.png";
 const PRESETS = [0.1, 0.5, 1, 5];
+const CREATIVE_PRESETS: {
+  label: string;
+  mode: MemeMode;
+  theme: string;
+}[] = [
+  {
+    label: "McDonald's cat",
+    mode: "brand",
+    theme:
+      "a dead-serious cat working the overnight shift at McDonald's during a tiny fry emergency",
+  },
+  {
+    label: "Wojak board meeting",
+    mode: "classic",
+    theme:
+      "Wojak presenting one terrible idea to an empty boardroom with total confidence",
+  },
+  {
+    label: "NVIDIA pigeon",
+    mode: "stock",
+    theme:
+      "an NVIDIA-obsessed pigeon guarding one graphics card like a Wall Street analyst",
+  },
+  {
+    label: "CEO capybara",
+    mode: "workplace",
+    theme:
+      "a capybara CEO calling an emergency meeting because the office printer blinked",
+  },
+  {
+    label: "Cursed air fryer",
+    mode: "cursed",
+    theme:
+      "a dented air fryer receiving an employee of the month award it made itself",
+  },
+];
 
 type RoundState = {
   phase: DevRoundPhase;
@@ -77,6 +120,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
   const [hydrated, setHydrated] = useState(false);
   const [amount, setAmount] = useState("1");
   const [theme, setTheme] = useState("");
+  const [memeMode, setMemeMode] = useState<MemeMode>(DEFAULT_MEME_MODE);
   const [confirmation, setConfirmation] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [wallet, setWallet] = useState<LaunchWalletStatus | null>(null);
@@ -240,6 +284,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     try {
       const result = await api<{ token: GeneratedMeme }>("/api/dev/generate", {
         theme: theme || undefined,
+        mode: memeMode,
         includeImage: config.openAiConfigured,
       });
       setState((current) => ({ ...current, phase: "READY", token: result.token }));
@@ -276,6 +321,10 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
         ...current,
         phase: "LAUNCHED",
         receipt: result.receipt,
+        totalSol: 0,
+        participants: 0,
+        ownSol: 0,
+        lastDeposit: undefined,
       }));
       setConfirmation("");
       void refreshWallet();
@@ -289,6 +338,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
   const reset = () => {
     setState(initialState(state.roundId + 1));
     setTheme("");
+    setMemeMode(DEFAULT_MEME_MODE);
     setConfirmation("");
     setError(null);
   };
@@ -454,13 +504,48 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
             ))}
 
           {state.phase === "LOCKED" && (
-            <input
-              className="dev-theme"
-              value={theme}
-              onChange={(event) => setTheme(event.target.value)}
-              placeholder="Optional direction for the generator…"
-              maxLength={180}
-            />
+            <div className="dev-creative-lab">
+              <div className="dev-creative-fields">
+                <select
+                  className="dev-theme dev-mode-select"
+                  value={memeMode}
+                  onChange={(event) =>
+                    setMemeMode(event.target.value as MemeMode)
+                  }
+                  aria-label="Meme creative mode"
+                >
+                  {MEME_MODES.map((mode) => (
+                    <option key={mode.id} value={mode.id}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="dev-theme"
+                  value={theme}
+                  onChange={(event) => setTheme(event.target.value)}
+                  placeholder="Character, brand, stock, meme or weird situation…"
+                  maxLength={180}
+                />
+              </div>
+              <p className="dev-mode-help">
+                {MEME_MODES.find((mode) => mode.id === memeMode)?.description}
+              </p>
+              <div className="dev-idea-row" aria-label="Quick meme ideas">
+                {CREATIVE_PRESETS.map((idea) => (
+                  <button
+                    key={idea.label}
+                    type="button"
+                    onClick={() => {
+                      setMemeMode(idea.mode);
+                      setTheme(idea.theme);
+                    }}
+                  >
+                    {idea.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           {(state.phase === "READY" || (state.phase === "LOCKED" && autoLaunch)) &&

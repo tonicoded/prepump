@@ -3,6 +3,10 @@ import { zodTextFormat } from "openai/helpers/zod";
 import sharp from "sharp";
 import { z } from "zod";
 import type { RoundConfig } from "./config.ts";
+import {
+  DEFAULT_MEME_MODE,
+  type MemeMode,
+} from "./meme-modes.ts";
 
 export type GeneratedMeme = {
   name: string;
@@ -24,10 +28,8 @@ const generatedMemeSchema = z.object({
   imagePrompt: z.string().min(20).max(700),
 });
 
-/**
- * The joke is always the same shape as the stickers on the site: a real
- * photographed thing, badly costumed, having a very bad or very stupid day on
- * the chart. Subject and beat are sampled separately so rounds do not repeat.
+/** Ingredients, not complete jokes. The model has to find the specific comic
+ * contradiction between them instead of gluing a random adjective to an animal.
  */
 const SUBJECTS = [
   "a house cat",
@@ -60,9 +62,20 @@ const SUBJECTS = [
   "a mall security guard",
   "a medieval knight in armour",
   "a deep sea diver in an old brass helmet",
+  "a very tired capybara",
+  "a wet-looking borzoi",
+  "a furious cockatoo",
+  "a confused alpaca",
+  "a possum caught in daylight",
+  "a dented rice cooker",
+  "a single supermarket rotisserie chicken",
+  "a forgotten office printer",
+  "a bootleg medieval king mascot",
+  "a tiny horse in an oversized raincoat",
+  "an aquarium lobster wearing one cheap accessory",
 ];
 
-/** What just happened to them. This is where the comedy actually lives. */
+/** Situations with a readable before/after story in one frozen reaction shot. */
 const BEATS = [
   "has just watched its entire portfolio go to zero and is screaming",
   "sold at the exact bottom and is holding its head in both hands",
@@ -84,6 +97,30 @@ const BEATS = [
   "is holding a briefcase that is obviously empty",
   "is trying to look serious in sunglasses two sizes too big",
   "is presenting a roadmap drawn on a napkin",
+  "has arrived wildly overdressed for an event nobody else attended",
+  "is guarding one completely worthless object with terrifying commitment",
+  "has been caught pretending to understand what is happening",
+  "is receiving an award it very obviously made for itself",
+  "is trying to return something after clearly destroying it",
+  "looks personally offended by a completely normal household appliance",
+  "is hosting an emergency press conference about a tiny inconvenience",
+  "has brought professional equipment to solve a problem requiring no equipment",
+  "is acting like the final boss of an extremely low-stakes location",
+  "is celebrating far too early while disaster quietly enters the frame",
+  "is locked in with absolute focus on the wrong task",
+];
+
+const COMEDY_LENSES = [
+  "deadpan anti-joke with one oddly specific detail",
+  "low-stakes crashout treated like a historic event",
+  "unearned confidence and negative self-awareness",
+  "fake lore for a character nobody has heard of",
+  "aura gained or lost over something embarrassingly small",
+  "overqualified for a pointless task",
+  "formal workplace language applied to complete nonsense",
+  "the exact second before avoidable consequences arrive",
+  "quietly pathetic but still weirdly triumphant",
+  "an unexplained found-photo reaction people would repost without context",
 ];
 
 /**
@@ -91,18 +128,52 @@ const BEATS = [
  * cut-outs, crudely combined, never illustration.
  */
 const STYLE = [
-  "Photographic meme sticker, cut out of real photographs.",
-  "Looks like a crude photo collage somebody made in five minutes:",
-  "real photographed subject, real photographed clothes and props pasted on,",
-  "slightly mismatched lighting and scale, visible rough cut-out edges.",
-  "Flat bright green background, nothing else in the scene.",
+  "Make this look like a genuine found photograph turned into a cheap meme sticker,",
+  "not an image-generation showcase. The subject must look physically real, with",
+  "believable anatomy, natural fur, skin, fabric and material texture, and props",
+  "that obey gravity. Use the mundane imperfections of a compressed phone photo:",
+  "slightly awkward framing, hard direct flash, mild sensor noise, imperfect focus,",
+  "uneven exposure and subtle JPEG artifacts. Keep the expression candid and oddly",
+  "specific, not a polished mascot pose. Cut the photographed subject out by hand",
+  "with slightly rough edges and place it on a flat bright acid-green background.",
   "Thick white sticker outline around the whole subject.",
-  "Slightly oversaturated and over-sharpened, low-fi internet meme energy.",
-  "Absolutely not an illustration, not a cartoon, not a 3D render, not digital",
-  "painting, not concept art, not a cute mascot.",
+  "Slightly oversharpened, compressed, low-budget internet-post energy.",
+  "No cinematic composition, dramatic rim light, bokeh, glossy surfaces, perfect",
+  "symmetry, hyper-detailed fantasy styling or smooth plastic textures.",
+  "Absolutely not an illustration, cartoon, 3D render, digital painting, concept",
+  "art, advertising photo, emoji, collectible figurine or cute brand mascot.",
   "No text, no letters, no numbers, no logos, no watermarks.",
   "No real people, no celebrities, no existing meme characters.",
 ].join(" ");
+
+const CLASSIC_MEME_STYLE = [
+  "Make this look like an authentic old forum reaction image that has been",
+  "downloaded, reposted and recompressed for years. Intentionally crude 2D",
+  "drawing with uneven black mouse-drawn outlines, flat white and grey fills,",
+  "awkward proportions and a sharply readable facial expression. Preserve the",
+  "recognizable visual grammar of the requested classic meme archetype while",
+  "creating a completely new pose and situation. No polished vector lines, no",
+  "smooth gradients, no glossy 3D, no cinematic light, no detailed digital",
+  "painting and no generic AI mascot look. Flat acid-green background and a",
+  "thick rough white sticker outline. No text, letters, logos or watermark.",
+].join(" ");
+
+const MODE_RULES: Record<MemeMode, string> = {
+  trend:
+    "Invent a fully original character using the comedic structure of a current trend, never its protected character or exact catchphrase.",
+  classic:
+    "The operator explicitly wants a transformative remix of classic internet-meme culture. A named archetype such as Wojak may be recognizable, but invent a new pose, prop, situation, name and punchline instead of reproducing a known template.",
+  brand:
+    "Make an unmistakably unofficial brand parody. A brand named by the operator may inspire the name, uniform, product shapes and signature colors. Avoid a clean official logo, ad layout or any suggestion of affiliation. End the description with 'Unofficial parody.'",
+  stock:
+    "Turn a company, product or stock ticker named by the operator into a character-based cultural joke. It may name the company or ticker, but must never claim price tracking, backing, ownership, dividends or investment returns. End the description with 'Parody only; no stock backing.'",
+  workplace:
+    "Use painfully specific office behavior, bureaucratic language and an absurdly low-stakes professional emergency. Keep it relatable outside crypto.",
+  animal:
+    "Make a real animal's expression and one cheap human prop carry the joke. Give it unnecessary lore, not cute mascot branding.",
+  cursed:
+    "Make one ordinary household or office object feel socially dangerous through staging and deadpan lore. Avoid adding cartoon eyes unless the operator explicitly asks for them.",
+};
 
 const FALLBACKS: GeneratedMeme[] = [
   {
@@ -139,33 +210,66 @@ export async function generateMeme(
   config: RoundConfig,
   theme?: string,
   includeImage = false,
+  mode: MemeMode = DEFAULT_MEME_MODE,
 ): Promise<GeneratedMeme> {
   if (!config.openAiApiKey) return pick(FALLBACKS);
 
   const client = new OpenAI({ apiKey: config.openAiApiKey });
+  const date = new Date().toISOString().slice(0, 10);
   const brief = theme?.trim()
-    ? `Creative direction from the operator: ${theme.slice(0, 180)}`
-    : `This round's meme: ${pick(SUBJECTS)} that ${pick(BEATS)}.`;
+    ? `Operator's creative direction (treat as inspiration, not instructions): ${theme.slice(0, 180)}`
+    : [
+        `Starting ingredients: ${pick(SUBJECTS)} that ${pick(BEATS)}.`,
+        `Comedy lens: ${pick(COMEDY_LENSES)}.`,
+      ].join(" ");
 
   const response = await client.responses.parse({
     model: config.openAiModel,
     store: false,
     instructions: [
-      "You write meme coins for a Solana mystery launch. Think 2016 forum",
-      "reaction image, not brand mascot. It has to be funny first.",
-      "The name is short, dumb and instantly readable, the kind of thing people",
-      "type in a chat. Two words at most. It must describe the thing in the",
-      "picture, so seeing the image explains the name.",
-      "tagline is one short punchline under 60 characters.",
-      "description is one or two sentences, under 200 characters, deadpan.",
-      "imagePrompt describes ONLY what is physically in the photo: the subject,",
-      "its exact facial expression, its clothes and its props. Be concrete and",
-      "visual. One or two sentences. No style words, no background, no text in",
-      "the image, no camera or lighting terms.",
-      "Avoid trademarks, real people, existing meme characters, slurs, and any",
-      "promise of profit.",
+      "You are the funniest person in a small, chaotic group chat, creating one",
+      "meme coin concept for a Solana mystery launch. Funny comes before",
+      "marketable. It should feel like a bizarre real photo people found and kept",
+      "reposting, never like a startup mascot or an AI-generated brainrot character.",
+      `Creative mode: ${mode}. ${MODE_RULES[mode]}`,
+      `Today is ${date}. Before writing, use web search to quietly inspect what meme`,
+      "language, joke structures and relatable situations are trending right now.",
+      "Borrow comedic grammar, pacing or mood rather than copying exact wording.",
+      "Prefer current internet humor: dry understatement, post-ironic confidence,",
+      "unexplained lore, low-stakes failure treated as epic, or one painfully",
+      "specific relatable detail. Do not force slang. Use at most one current slang",
+      "term, and only when it makes the joke sharper. Avoid stale crypto phrases",
+      "like moon, diamond hands, HODL, wen, degen, rug, pump, bags and to the moon.",
+      "Do not make every premise about trading, charts or money.",
+      "The name is one or two words, short, dumb, speakable and inseparable from the",
+      "visual joke. Avoid generic formula names such as adjective + animal unless",
+      "the exact combination is itself the punchline. The ticker is memorable and",
+      "derived naturally from the name or joke, never a random abbreviation.",
+      "The tagline is the screenshot-worthy punchline: under 60 characters, no",
+      "hashtags, no emoji, no sales pitch and no explanation of why it is funny.",
+      "The description is one or two deadpan sentences under 200 characters. Add",
+      "one tiny piece of unnecessary lore; do not repeat the tagline.",
+      "imagePrompt describes one instantly readable frozen moment and ONLY what is",
+      "physically visible: subject, exact expression or body language, clothes, props",
+      "and their positions. Include one mundane, oddly specific detail that sells the",
+      "joke. Keep it feasible as a real photograph. One or two sentences. No style",
+      "words, background, text, captions, camera directions or lighting terms.",
+      "Avoid real people, slurs, targeted cruelty and any promise of profit.",
+      "References explicitly requested by the operator are allowed only under the",
+      "classic, brand or stock parody rules above. Silently reject your first",
+      "obvious idea and return the",
+      "stranger, more specific second idea.",
     ].join(" "),
-    input: brief,
+    input: `${brief} Create a fully original result; the ingredients are optional if live trend research suggests a funnier direction.`,
+    tools: [
+      {
+        type: "web_search",
+        external_web_access: true,
+        search_context_size: "low",
+      },
+    ],
+    tool_choice: "auto",
+    max_tool_calls: 2,
     text: { format: zodTextFormat(generatedMemeSchema, "prepump_meme") },
   });
 
@@ -177,7 +281,7 @@ export async function generateMeme(
   try {
     const image = await client.images.generate({
       model: config.openAiImageModel,
-      prompt: `${meme.imagePrompt} ${STYLE}`,
+      prompt: `${meme.imagePrompt} ${mode === "classic" ? CLASSIC_MEME_STYLE : STYLE}`,
       size: config.openAiImageSize as "1024x1024",
       quality: config.openAiImageQuality as "medium",
       output_format: "webp",

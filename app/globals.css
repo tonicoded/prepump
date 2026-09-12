@@ -1117,6 +1117,70 @@ a {
   color: rgb(255 255 255 / 0.3);
 }
 
+.dev-creative-lab {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dev-creative-fields {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.42fr) minmax(0, 1fr);
+  gap: 0.45rem;
+}
+
+.dev-mode-select {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dev-mode-select option {
+  background: #171717;
+  color: #fffdf0;
+}
+
+.dev-mode-help {
+  color: rgb(255 255 255 / 0.42);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dev-idea-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.dev-idea-row button {
+  border: 1px solid rgb(85 246 133 / 0.35);
+  border-radius: 999px;
+  background: rgb(85 246 133 / 0.07);
+  padding: 0.25rem 0.45rem;
+  color: var(--color-pump-300);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dev-idea-row button:hover {
+  border-color: var(--color-pump-300);
+  background: rgb(85 246 133 / 0.14);
+}
+
+@media (max-width: 640px) {
+  .dev-creative-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .dev-machine {
     box-shadow: 5px 5px 0 rgb(255 253 240 / 0.96);

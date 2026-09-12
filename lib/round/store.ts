@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 export type Deposit = {
@@ -62,6 +62,39 @@ export function loadRound(roundId: number): RoundRecord | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Deposits are single-use. Rolling scan windows can overlap, so collect every
+ * transaction signature that an earlier round has already claimed.
+ */
+export function loadUsedDepositSignatures(excludeRoundId: number) {
+  const signatures = new Set<string>();
+
+  try {
+    for (const name of readdirSync(DIR)) {
+      if (!/^round-\d+\.json$/.test(name)) continue;
+
+      try {
+        const record = JSON.parse(
+          readFileSync(path.join(DIR, name), "utf8"),
+        ) as RoundRecord;
+        if (record.roundId === excludeRoundId) continue;
+
+        for (const deposit of record.deposits ?? []) {
+          for (const signature of deposit.signatures ?? []) {
+            signatures.add(signature);
+          }
+        }
+      } catch {
+        // A damaged unrelated round file must not block the current round.
+      }
+    }
+  } catch {
+    // The directory does not exist before the first round.
+  }
+
+  return signatures;
 }
 
 export function saveRound(record: RoundRecord) {

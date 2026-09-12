@@ -14,6 +14,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { readRoundConfig } from "../lib/round/config.ts";
 import {
   loadRound,
+  loadUsedDepositSignatures,
   saveRound,
   roundFile,
   type Payout,
@@ -21,6 +22,7 @@ import {
 } from "../lib/round/store.ts";
 import { scanDeposits } from "../lib/round/deposits.ts";
 import { generateMeme } from "../lib/round/meme.ts";
+import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
 import { createPumpToken, parseWallet } from "../lib/round/pumpfun.ts";
 import {
   allocate,
@@ -66,6 +68,18 @@ const config = readRoundConfig();
 
 /** `--last 90` scans the past 90 minutes instead of the configured window. */
 const lastMinutes = Number(option("last"));
+const after = option("after");
+if (after && Number.isFinite(lastMinutes) && lastMinutes > 0) {
+  die("Use either --after or --last, not both.");
+}
+if (after) {
+  const opensAt = Date.parse(after);
+  if (!Number.isFinite(opensAt)) {
+    die("--after must be an ISO timestamp, for example 2026-09-12T18:15:00Z.");
+  }
+  config.opensAt = opensAt;
+  config.closesAt = Date.now();
+}
 if (Number.isFinite(lastMinutes) && lastMinutes > 0) {
   config.closesAt = Date.now();
   config.opensAt = config.closesAt - lastMinutes * 60_000;
@@ -167,9 +181,21 @@ async function scan() {
     wallet.publicKey,
     config.opensAt,
     config.closesAt,
-    (n) => process.stdout.write(`\r  ${n} transactions inspected…   `),
+    (done, total) =>
+      process.stdout.write(
+        `\r  ${done}${total === undefined ? "" : `/${total}`} transactions inspected…   `,
+      ),
+    loadUsedDepositSignatures(config.roundId),
   );
   process.stdout.write("\r".padEnd(48) + "\r");
+
+  if (result.excluded > 0) {
+    console.log(
+      C.dim(
+        `  Skipped ${result.excluded} deposit transaction${result.excluded === 1 ? "" : "s"} already used by an earlier round.`,
+      ),
+    );
+  }
 
   const record = loadRound(config.roundId) ?? blankRecord(wallet.publicKey.toBase58());
   record.deposits = result.deposits;
@@ -290,7 +316,12 @@ async function launch() {
 
 
   process.stdout.write("  Generating meme… ");
-  const meme = await generateMeme(config, process.env.ROUND_THEME, true);
+  const meme = await generateMeme(
+    config,
+    process.env.ROUND_THEME,
+    true,
+    normalizeMemeMode(process.env.ROUND_MEME_MODE),
+  );
   console.log(C.green(`${meme.name} ($${meme.ticker})`));
   if (meme.imageError) console.log(C.yellow(`  ${meme.imageError}`));
   if (!meme.imageDataUrl && !flag("no-art")) {
@@ -582,6 +613,7 @@ try {
         "  --now         launch before ROUND_CLOSES_AT",
         "  --force       launch a round that already launched",
         "  --last <min>  use the past N minutes as the round window",
+        "  --after <utc> use transactions after an exact ISO timestamp",
         "  --buy <sol>   override the buy amount",
         "  --no-art      launch even if the artwork failed",
         "  --mint <addr> which coin's holders get the rewards",

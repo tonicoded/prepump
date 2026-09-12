@@ -121,16 +121,25 @@ no undo.**
 
 ## 3b. How the artwork is made
 
-Each round samples a subject and a mood from a list in
-`services/server/meme-generator.ts` — an animal doing a human job, an appliance
-with a personality problem, a statue that regrets being alive — so rounds do
-not all land on the same cat. The model is told that the **name and ticker must
-describe the character in the picture**, so the two halves match.
+Each round samples a subject, situation and comedy lens from lists in
+`lib/round/meme.ts` — an animal having a low-stakes crashout, an appliance with
+unearned confidence, a statue with unnecessary lore — so rounds do not all
+land on the same cat or the same trading joke. The text model also gets a small
+live web-search budget to pick up the structure and language of current meme
+trends. It may borrow the comedic grammar, but is explicitly forbidden from
+copying characters, catchphrases, celebrities or brands.
 
-The house style is fixed in one constant: a low-fi photo cut-out sticker on a
-flat acid-green background, hard white outline, no text, no real people, no
-existing meme characters. That is the same look as the stickers on the public
-page.
+The model is told that the **name and ticker must describe the character in the
+picture**, while the tagline supplies the actual punchline. Cliches such as
+“to the moon”, “diamond hands”, “HODL” and generic adjective-plus-animal names
+are rejected in the prompt.
+
+The house style is fixed in one constant: a believable found photo with phone
+camera flaws, cut out as a low-fi sticker on a flat acid-green background with a
+hard white outline. The prompt explicitly avoids glossy surfaces, perfect
+symmetry, cinematic light, mascot poses and other common AI-image tells. It also
+forbids text, real people and existing meme characters. That is the same basic
+look as the stickers on the public page, but rougher and more photographic.
 
 The image comes back at `OPENAI_IMAGE_SIZE`, then sharp crops it to a
 `TOKEN_IMAGE_SIZE` square webp before it is pinned. That keeps the payload
@@ -138,6 +147,25 @@ small and gives pump.fun exactly the square it displays.
 
 To steer one round by hand, type a direction into the field that appears when
 deposits lock. It replaces the random subject for that round only.
+
+The dev portal also offers seven creative modes: live trend, classic meme
+remix, brand parody, stock parody, office crashout, animal lore and cursed
+object. Quick ideas include a McDonald's night-shift cat, a Wojak board meeting
+and an NVIDIA pigeon. Classic mode deliberately uses a rough, recompressed
+forum-drawing style; the other modes keep the found-photo sticker style.
+
+Brand and stock modes are labelled as unofficial parody in the generated token
+description. Stock mode is a cultural/visual reference only: it does not track,
+hold or distribute the named stock. A real stock-reward product needs a separate
+fee engine and cannot be represented honestly through ordinary pump.fun token
+metadata.
+
+The command-line generator accepts the same modes through `.env.local`:
+
+```bash
+ROUND_MEME_MODE=classic
+ROUND_THEME="Wojak presenting one terrible idea to an empty boardroom"
+```
 
 ## 3c. Running a real round from the command line
 
@@ -175,6 +203,17 @@ npm run round -- auto --yes          # wait for T-0, then do all of it
 Note the bare `--`. Without it npm swallows flags like `--yes` instead of
 passing them to the script.
 
+For an ad-hoc round, prefer an exact lower boundary when an earlier test falls
+inside the same rolling hour:
+
+```bash
+npm run round -- scan --after 2026-09-12T18:15:00Z
+npm run round -- go --yes --after 2026-09-12T18:15:00Z
+```
+
+`--after` uses the supplied UTC timestamp as the opening time and the command's
+start time as the close. It cannot be combined with `--last`.
+
 **What `launch` does.** It rescans deposits, works out the buy amount as
 `min(total deposited, wallet balance − reserve)`, generates name, ticker,
 description and artwork, and only then creates the token with that SOL as the
@@ -204,6 +243,12 @@ anywhere: close the terminal and nothing fires.
 keeps `DEV_CUT_PERCENT`, and splits the rest strictly in proportion to each
 wallet's deposit. Payouts go out five per transaction, each one recorded in the
 round file, so re-running the command retries only what failed.
+
+The deposit scanner reads transaction details sequentially with a short pause,
+which keeps it usable on rate-limited public RPC endpoints. It also loads the
+deposit signatures from every earlier `.round/round-*.json` record and excludes
+them. Overlapping rolling windows such as repeated `--last 60` scans therefore
+cannot count the same deposit in two rounds.
 
 **Creator rewards.** pump.fun pays the coin's creator a share of every trade,
 into a vault owned by the creator wallet. `rewards` claims that into the dev
