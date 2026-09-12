@@ -25,7 +25,16 @@ const generatedMemeSchema = z.object({
   ticker: z.string().regex(/^[A-Z0-9]{2,8}$/),
   tagline: z.string().min(4).max(70),
   description: z.string().min(20).max(200),
+});
+
+const imageBriefSchema = z.object({
   imagePrompt: z.string().min(20).max(700),
+});
+
+const imageReviewSchema = z.object({
+  passes: z.boolean(),
+  reason: z.string().min(5).max(240),
+  correction: z.string().min(5).max(400),
 });
 
 /** Ingredients, not complete jokes. The model has to find the specific comic
@@ -249,6 +258,59 @@ function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+async function reviewArtwork(
+  client: OpenAI,
+  model: string,
+  meme: GeneratedMeme,
+  encoded: string,
+) {
+  const review = await client.responses.parse({
+    model,
+    store: false,
+    instructions: [
+      "You are an unforgiving meme art director checking semantic consistency,",
+      "not general image beauty. Pass only when the final image clearly features",
+      "the exact named character or object, visibly expresses the tagline and lore,",
+      "and makes the basic joke understandable without a caption. A supporting cat,",
+      "animal or prop is welcome, but it may never replace the named subject. Fail",
+      "generic visual associations: paper is not a printer, fries are not a fast-food",
+      "worker, and a chart is not a stock character. Also fail unreadable clutter,",
+      "prominent text, logos, severe anatomy mistakes or a generic AI mascot look.",
+      "When failing, correction must be a concise, physically visible instruction",
+      "that preserves what works while putting the missing named subject front and",
+      "center. When passing, correction should simply say 'No correction needed.'",
+    ].join(" "),
+    input: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: JSON.stringify({
+              name: meme.name,
+              ticker: meme.ticker,
+              tagline: meme.tagline,
+              description: meme.description,
+              requestedScene: meme.imagePrompt,
+            }),
+          },
+          {
+            type: "input_image",
+            image_url: `data:image/webp;base64,${encoded}`,
+            detail: "low",
+          },
+        ],
+      },
+    ],
+    text: { format: zodTextFormat(imageReviewSchema, "meme_art_review") },
+  });
+
+  if (!review.output_parsed) {
+    throw new Error("Artwork review returned no valid result.");
+  }
+  return review.output_parsed;
+}
+
 export async function generateMeme(
   config: RoundConfig,
   theme?: string,
@@ -266,6 +328,7 @@ export async function generateMeme(
         `Comedy lens: ${pick(COMEDY_LENSES)}.`,
       ].join(" ");
 
+  // Stage 1: lock the identity and joke before any visual decisions are made.
   const response = await client.responses.parse({
     model: config.openAiModel,
     store: false,
@@ -292,13 +355,6 @@ export async function generateMeme(
       "hashtags, no emoji, no sales pitch and no explanation of why it is funny.",
       "The description is one or two deadpan sentences under 200 characters. Add",
       "one tiny piece of unnecessary lore; do not repeat the tagline.",
-      "imagePrompt describes one instantly readable frozen moment and ONLY what is",
-      "physically visible: subject, exact expression or body language, clothes, props",
-      "and their positions. Include a concrete, mundane setting that logically fits",
-      "the character and deepens the joke, plus one oddly specific background detail.",
-      "Avoid an empty solid-color backdrop and never default to green. Keep it feasible",
-      "as a real photograph. One or two sentences. No style words, text, captions,",
-      "camera directions or lighting terms.",
       "Avoid real people, slurs, targeted cruelty and any promise of profit.",
       "References explicitly requested by the operator are allowed only under the",
       "classic, brand or stock parody rules above. Silently reject your first",
@@ -318,26 +374,82 @@ export async function generateMeme(
     text: { format: zodTextFormat(generatedMemeSchema, "prepump_meme") },
   });
 
-  const meme = response.output_parsed;
-  if (!meme) throw new Error("OpenAI returned no valid meme metadata.");
+  const concept = response.output_parsed;
+  if (!concept) throw new Error("OpenAI returned no valid meme metadata.");
+
+  // The no-art path does not need a second model call, but keeps a useful prompt
+  // in the returned shape for CLI and dev-portal compatibility.
+  let meme: GeneratedMeme = {
+    ...concept,
+    imagePrompt: concept.description,
+  };
   if (!includeImage) return meme;
 
   // The artwork is a bonus: if it fails, the round still gets a token.
   try {
-    const background = backgroundDirection(mode);
-    const image = await client.images.generate({
-      model: config.openAiImageModel,
-      prompt: `${meme.imagePrompt} ${background} ${mode === "classic" ? CLASSIC_MEME_STYLE : PHOTO_STYLE}`,
-      size: config.openAiImageSize as "1024x1024",
-      quality: config.openAiImageQuality as "medium",
-      output_format: "webp",
-      output_compression: 85,
-      background: "opaque",
-      n: 1,
+    // Stage 2: an art director receives the now-final identity as immutable input.
+    // This prevents a simultaneously invented image prompt from drifting into a
+    // different (but superficially related) character.
+    const briefResponse = await client.responses.parse({
+      model: config.openAiModel,
+      store: false,
+      instructions: [
+        "Turn a finalized meme-coin identity into one concrete image scene. The",
+        "identity below is locked: never rename it, reinterpret its central noun or",
+        "swap its main character/object for an easier animal. Start imagePrompt with",
+        "the exact named subject made physically visible and visually dominant. If",
+        "the name is Wrong Printer, an unmistakable actual printer must be central; a",
+        "cat may operate or guard it, but a cat beside paper is not enough. Translate",
+        "the tagline into body language or action and translate the lore into one",
+        "specific prop. Include a mundane setting that logically fits and deepens the",
+        "joke. The scene must read at tiny coin-icon size, so use one main subject and",
+        "at most one supporting character. Describe only visible content in one or two",
+        "sentences. No text, captions, logos, style, camera or lighting terminology.",
+      ].join(" "),
+      input: JSON.stringify({ mode, ...concept }),
+      text: { format: zodTextFormat(imageBriefSchema, "meme_image_brief") },
     });
+    if (!briefResponse.output_parsed) {
+      throw new Error("OpenAI returned no valid image brief.");
+    }
+    meme = { ...concept, imagePrompt: briefResponse.output_parsed.imagePrompt };
 
-    const encoded = image.data?.[0]?.b64_json;
-    if (!encoded) throw new Error("The image model returned no data.");
+    const background = backgroundDirection(mode);
+    const style = mode === "classic" ? CLASSIC_MEME_STYLE : PHOTO_STYLE;
+    const generateArtwork = async (correction?: string) => {
+      const image = await client.images.generate({
+        model: config.openAiImageModel,
+        prompt: [
+          meme.imagePrompt,
+          correction
+            ? `Mandatory correction after visual review: ${correction}`
+            : "",
+          background,
+          style,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        size: config.openAiImageSize as "1024x1024",
+        quality: config.openAiImageQuality as "medium",
+        output_format: "webp",
+        output_compression: 85,
+        background: "opaque",
+        n: 1,
+      });
+      const data = image.data?.[0]?.b64_json;
+      if (!data) throw new Error("The image model returned no data.");
+      return data;
+    };
+
+    let encoded = await generateArtwork();
+    let review = await reviewArtwork(client, config.openAiModel, meme, encoded);
+    if (!review.passes) {
+      encoded = await generateArtwork(review.correction);
+      review = await reviewArtwork(client, config.openAiModel, meme, encoded);
+    }
+    if (!review.passes) {
+      throw new Error(`Artwork rejected after retry: ${review.reason}`);
+    }
 
     // Square down to the size pump.fun actually displays, which keeps the
     // payload small enough to hand back through the browser.
