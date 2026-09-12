@@ -12,6 +12,8 @@ import {
 import type { ConnectionStatus, WalletId, WalletMeta } from "@/lib/types";
 import { client } from "@/services/chain";
 
+import type { Transaction } from "@solana/web3.js";
+
 type InjectedProvider = {
   isPhantom?: boolean;
   isSolflare?: boolean;
@@ -20,6 +22,9 @@ type InjectedProvider = {
   connect: (opts?: {
     onlyIfTrusted?: boolean;
   }) => Promise<{ publicKey?: { toString(): string } }>;
+  signAndSendTransaction?: (
+    transaction: Transaction,
+  ) => Promise<{ signature: string }>;
   disconnect: () => Promise<void>;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   off?: (event: string, handler: (...args: unknown[]) => void) => void;
@@ -86,6 +91,8 @@ type WalletContextValue = {
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
   debit: (lamports: bigint) => void;
+  /** Hands a built transaction to the wallet for signing and broadcast. */
+  sendTransaction: (transaction: Transaction) => Promise<string>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -231,6 +238,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
   }, [walletId, disconnect, loadBalance]);
 
+  const sendTransaction = useCallback(
+    async (transaction: Transaction) => {
+      if (!walletId || !address) throw new Error("No wallet connected.");
+      const provider = getProvider(walletId);
+      if (!provider?.signAndSendTransaction) {
+        throw new Error("This wallet cannot sign transactions here.");
+      }
+      const { signature } = await provider.signAndSendTransaction(transaction);
+      return signature;
+    },
+    [walletId, address],
+  );
+
   const wallets = useMemo<WalletMeta[]>(
     () => WALLETS.map((w) => ({ ...w, detected: !!detected[w.id] })),
     [detected],
@@ -260,6 +280,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       },
       debit: (lamports: bigint) =>
         setBalance((b) => (b === null ? b : b > lamports ? b - lamports : 0n)),
+      sendTransaction,
     }),
     [
       status,
@@ -272,6 +293,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       connect,
       disconnect,
       loadBalance,
+      sendTransaction,
     ],
   );
 

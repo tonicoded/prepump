@@ -1,7 +1,11 @@
+/** Outbound links used across the site and written into token metadata. */
 export const LINKS = {
-  x: "https://x.com/prepumpsol?s=11",
+  x: "https://x.com/prepumpsol",
   telegram: "https://t.me/+Esoro50UlzQ1NTY0",
-  docs: "#",
+  website: "https://www.prepump.lol",
+  docs: "https://www.prepump.lol",
+  terms: "#",
+  privacy: "#",
 } as const;
 
 export const SOCIALS = [

@@ -9,6 +9,29 @@ receives a proportional allocation of the distributable supply.
 
 ---
 
+## Two surfaces
+
+| Route | Who sees it | What it does |
+| --- | --- | --- |
+| `/` | Everyone | The public launch page. Stays **COMING SOON**. |
+| `/dev` | You | The meme machine: open a round, buy, generate the meme, launch it on pump.fun. |
+
+`/dev` is always available in `npm run dev`. In production it 404s unless
+`DEV_PORTAL_ENABLED=true`, and then `DEV_PORTAL_ACCESS_TOKEN` is required.
+Nothing you do in `/dev` changes what a visitor sees on `/`.
+
+A real round is run from the terminal, not from the browser:
+
+```bash
+npm run round status        # config, wallet, balance, window
+npm run round scan          # who deposited what
+npm run round launch --yes  # generate the meme and create it on pump.fun
+npm run round distribute --yes   # pay every depositor their share
+```
+
+Setup, environment variables and the real-launch checklist live in
+[docs/TECHNICAL_SETUP.md](docs/TECHNICAL_SETUP.md).
+
 ## Status: pre-launch
 
 Nothing on this site is live and nothing on it is invented.
@@ -35,6 +58,18 @@ npm run lint
 ```
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4.
+
+### Private dev lab
+
+The public site stays in Coming Soon mode. The complete interactive sandbox is
+available at [`/dev`](http://localhost:3000/dev): test deposits, the 30%
+withdrawal penalty, fixed supply math, random metadata, optional OpenAI image
+generation, a pump.fun launch dry-run and simulated distribution.
+
+Copy `.env.example` to `.env.local` for your own secrets. A safe local
+`.env.local` with simulation defaults is already present but ignored by Git.
+See [`docs/TECHNICAL_SETUP.md`](docs/TECHNICAL_SETUP.md) for the security model,
+Vercel setup, live-mode locks and the remaining on-chain work.
 
 ---
 
