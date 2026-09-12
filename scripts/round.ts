@@ -260,6 +260,11 @@ async function scan() {
         `\r  ${done}${total === undefined ? "" : `/${total}`} transactions inspected…   `,
       ),
     loadUsedDepositSignatures(config.roundId),
+    new Set(
+      listRounds().flatMap((record) =>
+        record.ownerWallet ? [record.ownerWallet.address] : [],
+      ),
+    ),
   );
   process.stdout.write("\r".padEnd(48) + "\r");
 
@@ -267,6 +272,14 @@ async function scan() {
     console.log(
       C.dim(
         `  Skipped ${result.excluded} deposit transaction${result.excluded === 1 ? "" : "s"} already used by an earlier round.`,
+      ),
+    );
+  }
+
+  if (result.internalExcluded > 0) {
+    console.log(
+      C.dim(
+        `  Skipped ${result.internalExcluded} internal owner-wallet transfer${result.internalExcluded === 1 ? "" : "s"}.`,
       ),
     );
   }

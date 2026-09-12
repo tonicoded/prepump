@@ -41,6 +41,8 @@ export type ScanResult = {
   scanned: number;
   /** Deposit transactions skipped because an earlier round already used them. */
   excluded: number;
+  /** Incoming transfers from PREPUMP's own generated owner wallets. */
+  internalExcluded: number;
 };
 
 /**
@@ -55,6 +57,7 @@ export async function scanDeposits(
   closesAt: number,
   onProgress?: (scanned: number, total?: number) => void,
   excludedSignatures: ReadonlySet<string> = new Set(),
+  excludedSenders: ReadonlySet<string> = new Set(),
 ): Promise<ScanResult> {
   const address = wallet.toBase58();
   const openSeconds = Math.floor(opensAt / 1000);
@@ -99,6 +102,7 @@ export async function scanDeposits(
   // rejects with 429 even for a modest wallet history.
   const totals = new Map<string, { lamports: number; signatures: string[] }>();
   let unattributedLamports = 0;
+  let internalExcluded = 0;
 
   for (let index = 0; index < pendingSignatures.length; index++) {
     const signature = pendingSignatures[index];
@@ -130,6 +134,10 @@ export async function scanDeposits(
 
           if (!sender) {
             unattributedLamports += credited;
+          } else if (excludedSenders.has(sender)) {
+            // Creator-reward sweeps and other PREPUMP-internal transfers are
+            // operational funds returning home, never participant deposits.
+            internalExcluded += 1;
           } else {
             const current = totals.get(sender) ?? {
               lamports: 0,
@@ -159,5 +167,6 @@ export async function scanDeposits(
     unattributedLamports,
     scanned: pendingSignatures.length,
     excluded,
+    internalExcluded,
   };
 }

@@ -271,7 +271,9 @@ The deposit scanner reads transaction details sequentially with a short pause,
 which keeps it usable on rate-limited public RPC endpoints. It also loads the
 deposit signatures from every earlier `.round/round-*.json` record and excludes
 them. Overlapping rolling windows such as repeated `--last 60` scans therefore
-cannot count the same deposit in two rounds.
+cannot count the same deposit in two rounds. Incoming transfers from generated
+owner wallets are also excluded, so creator-reward sweeps returning to the
+deposit wallet can never be mistaken for a participant deposit.
 
 **Creator rewards.** pump.fun pays the coin's creator a share of every trade,
 into a vault owned by the per-round owner wallet. `rewards` automatically loads
