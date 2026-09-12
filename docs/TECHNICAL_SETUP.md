@@ -223,22 +223,27 @@ pool together. `--mint <address>` picks whose holders get the payout.
 of their own in the transaction, so the sender cannot be identified. Those
 amounts are reported separately by `scan` and excluded from the split.
 
-**The floor on a launch.** pump.fun charges a create fee and the mint and
-metadata accounts need rent. Together that is about **0.035 SOL**, owed whatever
-the buy is — a $1 launch is not possible because $1 does not cover it. Budget
-roughly:
+**The floor on a launch.** Measured across three real launches, the cost on top
+of the buy is:
 
-| Item | SOL |
+| Part | Cost |
 | --- | --- |
-| pump.fun create fee | ~0.02 |
-| Mint, metadata and token account rent | ~0.012–0.015 |
+| Rent for the mint, metadata and token accounts | ~0.0071 SOL, flat |
+| pump.fun's cut of the dev buy | ~1.70% of the buy |
 | Priority fee | `PUMPFUN_PRIORITY_FEE` |
-| The buy itself | the deposits |
 
-`npm run round status` prints the minimum for your settings and how far short
-the wallet is. Tune it with `ROUND_CREATE_COST_SOL` if pump.fun changes its fee.
+So the wallet needs roughly `0.009 + buy × 1.02`. The defaults carry a little
+margin over the measured figures; tune them with `ROUND_CREATE_COST_SOL` and
+`PUMPFUN_BUY_FEE_PERCENT` if pump.fun changes its pricing.
 
-**A cheap test round.** Fund the wallet with ~0.045 SOL, send a dollar of SOL to
+Older guides quote a flat 0.02 SOL creation fee. That is out of date: pump.fun
+moved it into the first buy, and since the launch wallet *is* the first buyer it
+shows up as the percentage above rather than as a separate charge.
+
+`npm run round -- status` prints the minimum for your settings and how far short
+the wallet is.
+
+**A cheap test round.** Fund the wallet with ~0.02 SOL, send a dollar of SOL to
 it **from a different wallet**, then:
 
 ```bash

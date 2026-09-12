@@ -22,8 +22,10 @@ export type RoundConfig = {
   priorityFee: number;
   /** Kept in the wallet for fees and rent instead of being spent on the buy. */
   reserveSol: number;
-  /** pump.fun's create fee plus the rent for the mint and metadata accounts. */
+  /** Rent for the mint, metadata and token accounts. Owed whatever the buy is. */
   createCostSol: number;
+  /** pump.fun's cut of the dev buy, as a percentage of it. */
+  buyFeePercent: number;
   /** Used when a round has no deposits, or in the dev portal. */
   fallbackBuySol: number;
 
@@ -87,7 +89,8 @@ export function readRoundConfig(env = process.env): RoundConfig {
     slippage: num(env.PUMPFUN_SLIPPAGE, 10),
     priorityFee: num(env.PUMPFUN_PRIORITY_FEE, 0.00005),
     reserveSol: num(env.ROUND_RESERVE_SOL, 0),
-    createCostSol: num(env.ROUND_CREATE_COST_SOL, 0.035),
+    createCostSol: num(env.ROUND_CREATE_COST_SOL, 0.009),
+    buyFeePercent: num(env.PUMPFUN_BUY_FEE_PERCENT, 2),
     fallbackBuySol: num(env.PUMPFUN_DEV_BUY_SOL, 0.01),
 
     devCutPercent: num(env.DEV_CUT_PERCENT, 2),

@@ -233,12 +233,17 @@ export async function createPumpToken(
   const connection = new Connection(config.rpcUrl, "confirmed");
 
   const balance = await connection.getBalance(wallet.publicKey);
-  const required = (buySol + config.priorityFee + config.createCostSol) * 1e9;
+  // Cost is rent (flat) plus pump.fun's cut of the buy (proportional).
+  const required =
+    (config.createCostSol +
+      config.priorityFee +
+      buySol * (1 + config.buyFeePercent / 100)) *
+    1e9;
   if (balance < required) {
     throw new LaunchError(
       `Launch wallet holds ${(balance / 1e9).toFixed(4)} SOL. A ${buySol} SOL buy needs ` +
-        `${(required / 1e9).toFixed(4)} SOL, because pump.fun's create fee and the mint ` +
-        `and metadata rent cost about ${config.createCostSol} SOL on top of the buy.`,
+        `${(required / 1e9).toFixed(4)} SOL: ${config.createCostSol} SOL of rent plus ` +
+        `pump.fun's ${config.buyFeePercent}% on the buy itself.`,
     );
   }
 

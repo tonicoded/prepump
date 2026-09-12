@@ -127,7 +127,8 @@ async function status() {
   console.log(`  OpenAI           ${config.openAiApiKey ? C.green("configured") : C.yellow("missing — fallback list")}`);
   console.log(`  IPFS             ${config.pinataJwt ? "pinata" : C.green("pump.fun (no account needed)")}`);
   const overhead = config.createCostSol + config.priorityFee + config.reserveSol;
-  console.log(`  Create + rent    ${config.createCostSol} SOL  ${C.dim("(owed whatever the buy is)")}`);
+  console.log(`  Rent (flat)      ${config.createCostSol} SOL  ${C.dim("(owed whatever the buy is)")}`);
+  console.log(`  pump.fun cut     ${config.buyFeePercent}%  ${C.dim("of the buy")}`);
   console.log(`  Reserve          ${config.reserveSol} SOL`);
   console.log(`  Dev cut          ${config.devCutPercent}%`);
   console.log(`  Minimum wallet   ${C.bold(`${overhead.toFixed(4)} SOL`)} ${C.dim("+ whatever you want to buy with")}`);
@@ -231,12 +232,18 @@ async function launch() {
   // are owed whatever the buy is. Done in lamports and floored, so the buy can
   // never round its way past what the wallet actually holds.
   const BASE_FEE_LAMPORTS = 10_000;
-  const overheadLamports =
+  const flatLamports =
     Math.ceil(
       (config.createCostSol + config.priorityFee + config.reserveSol) * 1e9,
     ) + BASE_FEE_LAMPORTS;
-  const overhead = overheadLamports / 1e9;
-  const spendableLamports = balance - overheadLamports;
+  const overhead = flatLamports / 1e9;
+
+  // Spending b on the buy costs b * (1 + fee), so the affordable buy is the
+  // free balance divided by that multiplier, not simply the free balance.
+  const multiplier = 1 + config.buyFeePercent / 100;
+  const spendableLamports = Math.floor(
+    Math.max(0, balance - flatLamports) / multiplier,
+  );
 
   const forced = Number(option("buy"));
   const targetLamports =
@@ -247,18 +254,19 @@ async function launch() {
   const buyLamports = Math.max(0, Math.min(targetLamports, spendableLamports));
   const buySol = Math.floor(buyLamports / 1000) / 1e6;
 
-  if (spendableLamports < 0) {
+  if (balance < flatLamports) {
     die(
-      `Wallet holds ${sol(balance)} SOL. A launch needs about ${overhead.toFixed(4)} SOL ` +
-        `before any buy: pump.fun charges a create fee and the mint and metadata ` +
-        `accounts need rent. Top the wallet up.`,
+      `Wallet holds ${sol(balance)} SOL. A launch needs about ${overhead.toFixed(6)} SOL ` +
+        `before any buy, for the rent on the mint and metadata accounts. Top it up.`,
     );
   }
 
   console.log(`\n${C.bold("T-0 sequence")}`);
   console.log(`  Wallet           ${sol(balance)} SOL`);
   console.log(`  Pooled           ${pooledSol.toFixed(4)} SOL from ${record.deposits.length} wallets`);
-  console.log(`  Create + rent    ${C.dim(`${overhead.toFixed(4)} SOL`)}`);
+  console.log(
+    `  Rent + fees      ${C.dim(`${overhead.toFixed(6)} SOL + ${config.buyFeePercent}% of the buy`)}`,
+  );
   console.log(`  Buying with      ${C.bold(`${buySol} SOL`)}${buySol === 0 ? C.dim("  (create only, no buy)") : ""}`);
   if (Number.isFinite(forced)) console.log(C.dim(`  Buy forced with --buy ${forced}`));
   if (!Number.isFinite(forced) && buySol < pooledSol) {
