@@ -14,8 +14,16 @@ export function Navbar() {
       </nav>
       <div className="meme-marquee" aria-hidden>
         <div className="meme-marquee-track">
-          <span>MYSTERY DROP ✦ SOLANA ONLY ✦ PUMP.FUN BOUND ✦ GET IN BEFORE THE PUMP ✦</span>
-          <span>MYSTERY DROP ✦ SOLANA ONLY ✦ PUMP.FUN BOUND ✦ GET IN BEFORE THE PUMP ✦</span>
+          {[0, 1].map((group) => (
+            <div key={group} className="meme-marquee-group">
+              {[0, 1, 2, 3, 4, 5].map((item) => (
+                <span key={item}>
+                  MYSTERY DROP ✦ SOLANA ONLY ✦ PUMP.FUN BOUND ✦ GET IN BEFORE
+                  THE PUMP ✦
+                </span>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </header>

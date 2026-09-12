@@ -212,11 +212,21 @@ a {
 .meme-marquee-track {
   display: flex;
   width: max-content;
-  animation: pp-marquee 22s linear infinite;
+  animation: pp-marquee 80s linear infinite;
 }
 
-.meme-marquee-track span {
+/* Two identical groups, each at least a screen wide, so the -50% loop never
+   runs out of text on a wide display. */
+.meme-marquee-group {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 100vw;
+  justify-content: space-around;
+}
+
+.meme-marquee-group span {
   padding-right: 3rem;
+  white-space: nowrap;
 }
 
 .meme-nav-link {
