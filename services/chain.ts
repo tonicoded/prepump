@@ -20,10 +20,10 @@ export interface PrepumpClient {
   ): Promise<string>;
 }
 
-import { BROWSER_RPC } from "@/lib/round/rpc";
+import { browserRpcUrl } from "@/lib/round/rpc";
 
 /** Same-origin proxy unless a browser-capable endpoint is configured. */
-export const RPC_ENDPOINT = BROWSER_RPC;
+export const rpcEndpoint = browserRpcUrl;
 
 class ProgramNotDeployedError extends Error {
   constructor() {
@@ -41,7 +41,7 @@ export const client: PrepumpClient = {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(RPC_ENDPOINT, {
+      const res = await fetch(browserRpcUrl(), {
         method: "POST",
         headers: { "content-type": "application/json" },
         signal: controller.signal,

@@ -3,18 +3,23 @@
  * Solana RPC's 403 on browser origins never bites; set NEXT_PUBLIC_SOLANA_RPC
  * to a browser-capable endpoint to skip the hop.
  */
-function browserEndpoint() {
+const PUBLIC_SOLANA = /api\.(mainnet-beta|devnet|testnet)\.solana\.com/;
+
+/**
+ * Absolute, because web3.js's Connection rejects a relative path outright.
+ * Resolved at call time so it picks up whatever origin the page is served on.
+ */
+export function browserRpcUrl(): string {
   const configured = process.env.NEXT_PUBLIC_SOLANA_RPC?.trim();
-  if (!configured) return "/api/rpc";
 
   // Solana's public endpoints answer browser origins with 403, so a browser
-  // must never be pointed at one. Fall back to the proxy instead.
-  return /api\.(mainnet-beta|devnet|testnet)\.solana\.com/.test(configured)
-    ? "/api/rpc"
-    : configured;
-}
+  // must never be pointed at one. Use the proxy instead.
+  if (configured && !PUBLIC_SOLANA.test(configured)) return configured;
 
-export const BROWSER_RPC = browserEndpoint();
+  return typeof window === "undefined"
+    ? "http://localhost:3000/api/rpc"
+    : new URL("/api/rpc", window.location.origin).toString();
+}
 
 /** Polls over HTTP. `confirmTransaction` would open a websocket the proxy has not got. */
 export async function waitForConfirmation(

@@ -19,7 +19,7 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
-import { BROWSER_RPC, waitForConfirmation } from "@/lib/round/rpc";
+import { browserRpcUrl, waitForConfirmation } from "@/lib/round/rpc";
 import { useWallet } from "@/providers/WalletProvider";
 import { shortAddress } from "@/lib/format";
 
@@ -75,6 +75,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
   const [confirmation, setConfirmation] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [wallet, setWallet] = useState<LaunchWalletStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [autoLaunch, setAutoLaunch] = useState(true);
   const [busy, setBusy] = useState(false);
   const [depositing, setDepositing] = useState<string | null>(null);
@@ -137,16 +138,26 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     try {
       const result = await api<{ wallet: LaunchWalletStatus }>("/api/dev/status");
       setWallet(result.wallet);
-    } catch {
+      setStatusError(
+        result.wallet.address ? null : "No deposit wallet configured on the server.",
+      );
+    } catch (cause) {
       setWallet(null);
+      const message =
+        cause instanceof Error ? cause.message : "Could not reach the server.";
+      setStatusError(
+        /401|token/i.test(message)
+          ? "Enter the dev access token at the bottom of this card."
+          : message,
+      );
     }
   }, [api]);
 
   useEffect(() => {
     if (!config.launchWalletConfigured) return;
-    const timer = setTimeout(() => void refreshWallet(), 0);
+    const timer = setTimeout(() => void refreshWallet(), 250);
     return () => clearTimeout(timer);
-  }, [config.launchWalletConfigured, refreshWallet]);
+  }, [config.launchWalletConfigured, refreshWallet, accessToken]);
 
   /* ------------------------------ actions ------------------------------ */
 
@@ -174,7 +185,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     setError(null);
     setDepositing("Confirm in your wallet…");
     try {
-      const connection = new Connection(BROWSER_RPC, "confirmed");
+      const connection = new Connection(browserRpcUrl(), "confirmed");
       const from = new PublicKey(address);
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash("confirmed");
@@ -401,8 +412,13 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
                   onClick={() => void buy()}
                   disabled={!validAmount || depositing !== null || !wallet?.address}
                 >
-                  {depositing ?? `Send ${validAmount ? parsedAmount : 0} SOL`}
+                  {depositing ??
+                    (wallet?.address
+                      ? `Send ${validAmount ? parsedAmount : 0} SOL`
+                      : "Deposit wallet unavailable")}
                 </button>
+
+                {statusError && <p className="dev-warn">{statusError}</p>}
 
                 {wallet?.address && (
                   <p className="dev-note">
