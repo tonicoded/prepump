@@ -72,23 +72,48 @@ export function loadRound(roundId: number): RoundRecord | null {
   }
 }
 
-export function findRoundByMint(mint: string): RoundRecord | null {
+export function listRounds(): RoundRecord[] {
+  const records: RoundRecord[] = [];
   try {
     for (const name of readdirSync(DIR)) {
       if (!/^round-\d+\.json$/.test(name)) continue;
       try {
-        const record = JSON.parse(
-          readFileSync(path.join(DIR, name), "utf8"),
-        ) as RoundRecord;
-        if (record.launch?.mint === mint) return record;
+        records.push(
+          JSON.parse(readFileSync(path.join(DIR, name), "utf8")) as RoundRecord,
+        );
       } catch {
-        // Ignore a damaged unrelated round record.
+        // Ignore a damaged record; commands still work with every healthy one.
       }
     }
   } catch {
-    // No rounds exist yet.
+    // The directory does not exist before the first round.
   }
-  return null;
+  return records.sort((a, b) => a.roundId - b.roundId);
+}
+
+/** Keep working on the highest unlaunched record, otherwise advance once. */
+export function nextRoundId(minimum = 1) {
+  const latest = listRounds().filter((record) => record.roundId >= minimum).at(-1);
+  if (!latest) return minimum;
+  return latest.launch ? latest.roundId + 1 : latest.roundId;
+}
+
+export function latestLaunchedRound() {
+  return listRounds().filter((record) => record.launch).at(-1) ?? null;
+}
+
+export function latestUndistributedRound() {
+  return (
+    listRounds()
+      .filter(
+        (record) => record.launch && !record.distribution?.completedAt,
+      )
+      .at(-1) ?? null
+  );
+}
+
+export function findRoundByMint(mint: string): RoundRecord | null {
+  return listRounds().find((record) => record.launch?.mint === mint) ?? null;
 }
 
 /**

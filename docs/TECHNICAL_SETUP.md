@@ -188,6 +188,13 @@ ROUND_RESERVE_SOL=0.05
 DEV_CUT_PERCENT=2
 ```
 
+`ROUND_ID` is only the starting floor. The CLI reads `.round/` and advances the
+number automatically after every launch; you do not edit `.env.local` between
+rounds. `scan`, `launch`, `go` and `auto` continue the highest unlaunched round
+or start the next one. `distribute` selects the latest unfinished launch, while
+`rewards` and `owner` select the latest launched coin. Use `--round <id>` only
+as an explicit recovery or inspection override.
+
 Then:
 
 ```bash

@@ -22,7 +22,10 @@ import { readRoundConfig } from "../lib/round/config.ts";
 import {
   loadRound,
   findRoundByMint,
+  latestLaunchedRound,
+  latestUndistributedRound,
   loadUsedDepositSignatures,
+  nextRoundId,
   saveRound,
   roundFile,
   type Payout,
@@ -79,6 +82,18 @@ const option = (name: string) => {
 };
 
 const config = readRoundConfig();
+const requestedRound = Number(option("round"));
+if (Number.isInteger(requestedRound) && requestedRound > 0) {
+  config.roundId = requestedRound;
+} else if (command === "distribute") {
+  config.roundId =
+    (latestUndistributedRound() ?? latestLaunchedRound())?.roundId ??
+    nextRoundId(config.roundId);
+} else if (command === "rewards" || command === "owner") {
+  config.roundId = latestLaunchedRound()?.roundId ?? nextRoundId(config.roundId);
+} else {
+  config.roundId = nextRoundId(config.roundId);
+}
 
 /** `--last 90` scans the past 90 minutes instead of the configured window. */
 const lastMinutes = Number(option("last"));
@@ -222,6 +237,13 @@ async function status() {
 async function scan() {
   requireWindow();
   const wallet = parseWallet(config.walletSecret);
+  const existing = loadRound(config.roundId);
+  if (existing?.launch) {
+    die(
+      `Round #${config.roundId} is already launched. The automatic counter should ` +
+        "select the next round; remove --round or choose a newer id.",
+    );
+  }
 
   console.log(`\n${C.bold("Scanning deposits")}`);
   console.log(`  ${wallet.publicKey.toBase58()}`);
@@ -248,7 +270,7 @@ async function scan() {
     );
   }
 
-  const record = loadRound(config.roundId) ?? blankRecord(wallet.publicKey.toBase58());
+  const record = existing ?? blankRecord(wallet.publicKey.toBase58());
   record.deposits = result.deposits;
   record.totalLamports = result.totalLamports;
   record.scannedAt = new Date().toISOString();
@@ -638,10 +660,7 @@ async function rewards() {
 }
 
 function owner() {
-  const requested = Number(option("round"));
-  const roundId = Number.isInteger(requested) && requested > 0
-    ? requested
-    : config.roundId;
+  const roundId = config.roundId;
   const record = loadRound(roundId);
   if (!record?.ownerWallet) die(`Round #${roundId} has no separate owner wallet.`);
   const wallet = loadOwnerWallet(roundId, record.ownerWallet.address);
@@ -734,7 +753,7 @@ try {
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
         "  --split       share creator fees with holders instead of keeping them",
         "  --rewards     with `auto`, also claim creator fees after the launch",
-        "  --round <id>  select a round for the owner command",
+        "  --round <id>  override automatic round selection",
         "  --show-secret print an owner key for wallet import (sensitive)",
         "",
       ].join("\n"),
