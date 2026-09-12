@@ -123,20 +123,20 @@ const COMEDY_LENSES = [
   "an unexplained found-photo reaction people would repost without context",
 ];
 
-/**
- * House style, copied from the stickers already on the site: photographic
- * cut-outs, crudely combined, never illustration.
+/** Photographic internet-meme texture without forcing every idea into the same
+ * cut-out-on-green template. The separate background direction decides whether
+ * the result is a found photo, rough collage or simple studio image.
  */
-const STYLE = [
-  "Make this look like a genuine found photograph turned into a cheap meme sticker,",
+const PHOTO_STYLE = [
+  "Make this look like a genuine found photograph or a crudely assembled internet meme,",
   "not an image-generation showcase. The subject must look physically real, with",
   "believable anatomy, natural fur, skin, fabric and material texture, and props",
   "that obey gravity. Use the mundane imperfections of a compressed phone photo:",
   "slightly awkward framing, hard direct flash, mild sensor noise, imperfect focus,",
   "uneven exposure and subtle JPEG artifacts. Keep the expression candid and oddly",
-  "specific, not a polished mascot pose. Cut the photographed subject out by hand",
-  "with slightly rough edges and place it on a flat bright acid-green background.",
-  "Thick white sticker outline around the whole subject.",
+  "specific, not a polished mascot pose. If it is a collage, use visibly imperfect",
+  "hand-cut edges; if it is a real scene, let the subject belong naturally in it.",
+  "Do not automatically add a white sticker outline.",
   "Slightly oversharpened, compressed, low-budget internet-post energy.",
   "No cinematic composition, dramatic rim light, bokeh, glossy surfaces, perfect",
   "symmetry, hyper-detailed fantasy styling or smooth plastic textures.",
@@ -154,9 +154,52 @@ const CLASSIC_MEME_STYLE = [
   "recognizable visual grammar of the requested classic meme archetype while",
   "creating a completely new pose and situation. No polished vector lines, no",
   "smooth gradients, no glossy 3D, no cinematic light, no detailed digital",
-  "painting and no generic AI mascot look. Flat acid-green background and a",
-  "thick rough white sticker outline. No text, letters, logos or watermark.",
+  "painting and no generic AI mascot look. Keep the subject readable at tiny icon",
+  "size. No text, letters, logos or watermark.",
 ].join(" ");
+
+/** A wide visual vocabulary makes consecutive launches feel authored instead of
+ * templated. Acid green is handled separately as a genuinely rare treatment.
+ */
+const PHOTO_BACKGROUNDS = [
+  "A real, slightly messy location that logically belongs to the joke; use environmental details as part of the punchline.",
+  "A depressing fluorescent office break room with beige walls, grey carpet and one irrelevant noticeboard.",
+  "A cheap community-hall event setup with burgundy curtains, folding chairs and harsh ceiling lights.",
+  "A late-night fast-food booth with faded red vinyl, off-white tiles and greasy reflections; no logos.",
+  "A cluttered ordinary kitchen photographed after midnight, lit by a refrigerator and one ugly warm ceiling bulb.",
+  "A supermarket aisle or stockroom with dull cream floors, battered cardboard and cold fluorescent lighting; no logos.",
+  "A wet municipal car park under a flat grey sky, with badly painted lines and one lonely traffic cone.",
+  "An awkward early-2000s school-photo backdrop: mottled navy and dusty purple fabric, visibly cheap and uneven.",
+  "A rough physical collage on wrinkled off-white paper with torn magazine fragments, tape shadows and photocopier grain.",
+  "A faded powder-blue studio sweep with scuffs, uneven flash falloff and lots of imperfect negative space.",
+  "A dark brown wood-panelled room with an old patterned carpet and direct disposable-camera flash.",
+  "A sun-bleached suburban garden or driveway with washed-out concrete and mundane household clutter.",
+] as const;
+
+const CLASSIC_BACKGROUNDS = [
+  "Dirty off-white forum-image canvas with faint JPEG blocks and uneven grey smudges.",
+  "Flat pale blue-grey background resembling an old default desktop theme.",
+  "Wrinkled beige printer paper photographed under bad room light.",
+  "High-contrast black-and-white photocopy texture with one muted red accent shape.",
+  "Faded dusty-purple gradient from an amateur early-2000s profile picture.",
+] as const;
+
+const RARE_GREEN_BACKGROUND =
+  "A flat bright acid-green chroma-key background with deliberately rough hand-cut edges and a white sticker outline.";
+
+function backgroundDirection(mode: MemeMode): string {
+  const direction =
+    Math.random() < 0.05
+      ? RARE_GREEN_BACKGROUND
+      : pick(mode === "classic" ? CLASSIC_BACKGROUNDS : PHOTO_BACKGROUNDS);
+  return [
+    `Background direction: ${direction}`,
+    "Adapt the location details to the subject and joke, but keep this palette and",
+    "presentation. Unless this direction explicitly says acid-green, never use a",
+    "green, lime, neon-green or chroma-key background, and do not replace the scene",
+    "with a generic solid color. The subject must still read clearly at 128px.",
+  ].join(" ");
+}
 
 const MODE_RULES: Record<MemeMode, string> = {
   trend:
@@ -251,9 +294,11 @@ export async function generateMeme(
       "one tiny piece of unnecessary lore; do not repeat the tagline.",
       "imagePrompt describes one instantly readable frozen moment and ONLY what is",
       "physically visible: subject, exact expression or body language, clothes, props",
-      "and their positions. Include one mundane, oddly specific detail that sells the",
-      "joke. Keep it feasible as a real photograph. One or two sentences. No style",
-      "words, background, text, captions, camera directions or lighting terms.",
+      "and their positions. Include a concrete, mundane setting that logically fits",
+      "the character and deepens the joke, plus one oddly specific background detail.",
+      "Avoid an empty solid-color backdrop and never default to green. Keep it feasible",
+      "as a real photograph. One or two sentences. No style words, text, captions,",
+      "camera directions or lighting terms.",
       "Avoid real people, slurs, targeted cruelty and any promise of profit.",
       "References explicitly requested by the operator are allowed only under the",
       "classic, brand or stock parody rules above. Silently reject your first",
@@ -279,9 +324,10 @@ export async function generateMeme(
 
   // The artwork is a bonus: if it fails, the round still gets a token.
   try {
+    const background = backgroundDirection(mode);
     const image = await client.images.generate({
       model: config.openAiImageModel,
-      prompt: `${meme.imagePrompt} ${mode === "classic" ? CLASSIC_MEME_STYLE : STYLE}`,
+      prompt: `${meme.imagePrompt} ${background} ${mode === "classic" ? CLASSIC_MEME_STYLE : PHOTO_STYLE}`,
       size: config.openAiImageSize as "1024x1024",
       quality: config.openAiImageQuality as "medium",
       output_format: "webp",
