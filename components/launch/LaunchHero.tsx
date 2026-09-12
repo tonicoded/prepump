@@ -166,21 +166,30 @@ export function LaunchHero({ compact = false }: { compact?: boolean }) {
 function RotatingHeadline() {
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [active, setActive] = useState(0);
+  const [phase, setPhase] = useState<"in" | "out">("in");
 
   useEffect(() => {
     if (reduceMotion) return;
 
+    let switchTimeout: number | undefined;
     const interval = window.setInterval(() => {
-      setActive((current) => (current + 1) % PRELAUNCH_HEADLINES.length);
-    }, 3800);
+      setPhase("out");
+      switchTimeout = window.setTimeout(() => {
+        setActive((current) => (current + 1) % PRELAUNCH_HEADLINES.length);
+        setPhase("in");
+      }, 340);
+    }, 4200);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      if (switchTimeout !== undefined) window.clearTimeout(switchTimeout);
+    };
   }, [reduceMotion]);
 
   const [firstLine, secondLine] = PRELAUNCH_HEADLINES[active];
 
   return (
-    <span key={active} className="headline-rotate block">
+    <span key={active} className={`headline-swap headline-swap-${phase} block`}>
       {firstLine}
       <br />
       <span className="meme-headline-secondary">{secondLine}</span>
@@ -190,25 +199,39 @@ function RotatingHeadline() {
 
 function ComingSoon({ compact }: { compact: boolean }) {
   return (
-    <div className="meme-coming-card flex flex-col items-center">
-      <p
-        className={`${
-          compact
-            ? "text-[clamp(1.375rem,8.5vw,2rem)]"
-            : "text-[clamp(1.5rem,min(5.8vh,4.5vw),3.25rem)]"
-        } leading-[0.95] font-black tracking-[0.06em]`}
-      >
-        COMING SOON!
-      </p>
-
-      <div className="mt-[clamp(0.6rem,1.8vh,1rem)] h-1 w-[min(22rem,64vw)] overflow-hidden rounded-full bg-white/15">
-        <span
-          className="block h-full w-1/4 rounded-full bg-pump-300"
-          style={{ animation: "pp-sweep 3.2s ease-in-out infinite" }}
-        />
+    <div
+      className="meme-coming-card flex flex-col items-center"
+      role="status"
+      aria-label="Launch preparations in progress"
+    >
+      <div className="meme-coming-heading relative flex w-full items-center justify-center">
+        <span className="meme-loader-status">
+          <span className="meme-loader-dot" /> cooking
+        </span>
+        <p
+          className={`${
+            compact
+              ? "text-[clamp(1.375rem,8.5vw,2rem)]"
+              : "text-[clamp(1.5rem,min(5.8vh,4.5vw),3.25rem)]"
+          } leading-[0.95] font-black tracking-[0.045em]`}
+        >
+          COMING SOON!
+        </p>
+        <span className="meme-loader-code">T–?</span>
       </div>
 
-      <p className="mt-[clamp(0.6rem,1.6vh,1rem)] font-mono text-[clamp(8px,1vh,10px)] font-bold tracking-[0.16em] text-white/55 uppercase">
+      <div className="meme-block-loader mt-[clamp(0.65rem,1.8vh,1rem)] w-full" aria-hidden>
+        {Array.from({ length: 12 }, (_, index) => (
+          <span key={index} style={{ animationDelay: `${index * 80}ms` }} />
+        ))}
+      </div>
+
+      <div className="mt-[clamp(0.55rem,1.5vh,0.85rem)] flex w-full items-center justify-between gap-3 font-mono text-[clamp(7px,0.95vh,9px)] font-black tracking-[0.13em] text-white/55 uppercase">
+        <span>Generating next meme</span>
+        <span className="text-pump-300">Solana → pump.fun</span>
+      </div>
+
+      <p className="mt-[clamp(0.55rem,1.4vh,0.8rem)] font-mono text-[clamp(7px,0.9vh,9px)] font-bold tracking-[0.14em] text-white/35 uppercase">
         Launch date to be announced · Deposits are not open
       </p>
     </div>

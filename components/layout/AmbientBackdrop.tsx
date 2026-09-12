@@ -32,7 +32,7 @@ export function AmbientBackdrop() {
           src="/prepump-meme-collage.png"
           alt=""
           fill
-          sizes="100vw"
+          sizes="(min-width: 640px) 100vw, 1px"
           className="object-contain"
           priority
         />
@@ -45,6 +45,7 @@ export function AmbientBackdrop() {
         height={793}
         sizes="128vw"
         className="meme-art-mobile absolute top-[18%] left-1/2 h-auto w-[128vw] max-w-none -translate-x-1/2 sm:hidden"
+        unoptimized
         priority
       />
 
