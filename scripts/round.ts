@@ -28,6 +28,15 @@ import {
   resolveTokenProgram,
   sendPayouts,
 } from "../lib/round/distribute.ts";
+import {
+  allocateRewards,
+  claimableLamports,
+  collectCreatorFees,
+  creatorVault,
+  sendRewards,
+  snapshotHolders,
+  type RewardPayout,
+} from "../lib/round/rewards.ts";
 
 try {
   process.loadEnvFile(".env.local");
@@ -64,7 +73,11 @@ if (Number.isFinite(lastMinutes) && lastMinutes > 0) {
 
 const connection = new Connection(config.rpcUrl, "confirmed");
 
-const sol = (lamports: number) => (lamports / 1e9).toFixed(4);
+const sol = (lamports: number) => (lamports / 1e9).toFixed(6);
+const num = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
 const short = (value: string) => `${value.slice(0, 4)}…${value.slice(-4)}`;
 const stamp = (ms: number) =>
   ms ? new Date(ms).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "not set";
@@ -371,6 +384,101 @@ async function distribute() {
   console.log(`  ${C.dim(roundFile(config.roundId))}\n`);
 }
 
+
+/**
+ * pump.fun pays the creator a share of trading fees. PREPUMP passes that on:
+ * the creator wallet claims it, then splits it over whoever holds the coin.
+ */
+async function rewards() {
+  const wallet = parseWallet(config.walletSecret);
+  const record = loadRound(config.roundId);
+  const mintAddress = option("mint") ?? record?.launch?.mint;
+  if (!mintAddress) die("No mint. Launch a round first, or pass --mint <address>.");
+
+  const mint = new PublicKey(mintAddress);
+  const vault = creatorVault(wallet.publicKey);
+  const pending = await claimableLamports(connection, vault);
+
+  console.log(`\n${C.bold("Creator rewards")}`);
+  console.log(`  Token            ${record?.token?.ticker ? `$${record.token.ticker}` : short(mintAddress)}`);
+  console.log(`  Creator vault    ${short(vault.toBase58())}`);
+  console.log(`  Claimable        ${C.bold(`${sol(pending)} SOL`)}`);
+
+  const programId = await resolveTokenProgram(connection, mint);
+  const holders = await snapshotHolders(connection, mint, programId, [
+    wallet.publicKey.toBase58(),
+  ]);
+  const held = holders.reduce((sum, h) => sum + h.amount, 0n);
+
+  console.log(`  Holders          ${holders.length} wallets hold the coin`);
+
+  if (holders.length === 0) {
+    console.log(
+      C.yellow(
+        "\n  Nobody holds it right now, so there is nothing to split. The vault keeps\n  the SOL until someone does.\n",
+      ),
+    );
+    return;
+  }
+
+  const before = await connection.getBalance(wallet.publicKey);
+
+  if (pending > 0) {
+    if (!flag("yes")) die("Add --yes to claim and pay out.");
+    process.stdout.write("  Claiming… ");
+    const signature = await collectCreatorFees(config);
+    console.log(C.green("done"));
+    console.log(`  ${C.dim(`https://solscan.io/tx/${signature}`)}`);
+  } else {
+    console.log(C.dim("  Nothing new to claim; paying out what is already here."));
+  }
+
+  const after = await connection.getBalance(wallet.publicKey);
+  const claimed = Math.max(0, after - before) || pending;
+  const keep = Math.round((claimed * config.devCutPercent) / 100);
+  const distributable = claimed - keep;
+  const minLamports = Math.round(num(option("min"), 0.00001) * 1e9);
+
+  const payouts: RewardPayout[] = allocateRewards(
+    holders,
+    distributable,
+    minLamports,
+  );
+
+  console.log(`\n  Claimed          ${sol(claimed)} SOL`);
+  if (keep > 0) console.log(`  Creator cut      ${config.devCutPercent}% → ${sol(keep)} SOL`);
+  console.log(`  To holders       ${sol(distributable)} SOL across ${payouts.length} wallets`);
+
+  if (payouts.length === 0) {
+    console.log(C.yellow("\n  Every share lands below the dust floor. Nothing sent.\n"));
+    return;
+  }
+
+  for (const payout of payouts.slice(0, 10)) {
+    const holder = holders.find((h) => h.owner === payout.wallet)!;
+    const share = Number((holder.amount * 10000n) / held) / 100;
+    console.log(
+      `    ${short(payout.wallet).padEnd(14)}${sol(payout.lamports).padStart(10)}${`${share.toFixed(2)}%`.padStart(9)}`,
+    );
+  }
+  if (payouts.length > 10) console.log(C.dim(`    …and ${payouts.length - 10} more`));
+
+  if (!flag("yes")) die("\nAdd --yes to send the payouts.");
+
+  const settled = await sendRewards(connection, wallet, payouts, (done, total) =>
+    process.stdout.write(`\r  Sending… ${done}/${total}   `),
+  );
+  process.stdout.write("\r".padEnd(40) + "\r");
+
+  const failed = settled.filter((p) => p.error && !p.signature);
+  console.log(
+    `  ${C.green(`${settled.length - failed.length} paid`)}${failed.length ? C.red(` · ${failed.length} failed`) : ""}\n`,
+  );
+  for (const failure of failed.slice(0, 5)) {
+    console.log(C.red(`    ${short(failure.wallet)} — ${failure.error}`));
+  }
+}
+
 /* --------------------------------- run ---------------------------------- */
 
 try {
@@ -378,6 +486,7 @@ try {
   else if (command === "scan") await scan();
   else if (command === "launch") await launch();
   else if (command === "distribute") await distribute();
+  else if (command === "rewards") await rewards();
   else if (command === "go") {
     await launch();
     await distribute();
@@ -385,7 +494,7 @@ try {
     console.log(
       [
         "",
-        "Usage: npm run round <status|scan|launch|distribute|go> [options]",
+        "Usage: npm run round <status|scan|launch|distribute|rewards|go> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
         "  --now         launch before ROUND_CLOSES_AT",
@@ -393,6 +502,8 @@ try {
         "  --last <min>  use the past N minutes as the round window",
         "  --buy <sol>   override the buy amount",
         "  --no-art      launch even if the artwork failed",
+        "  --mint <addr> which coin's holders get the rewards",
+        "  --min <sol>   dust floor for a reward payout (default 0.00001)",
         "",
       ].join("\n"),
     );

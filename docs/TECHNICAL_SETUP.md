@@ -163,12 +163,16 @@ DEV_CUT_PERCENT=2
 Then:
 
 ```bash
-npm run round status        # config, wallet, balance, window
-npm run round scan          # who deposited what, saved to .round/round-001.json
-npm run round launch --yes  # generate the meme and create it on pump.fun
-npm run round distribute --yes   # send every depositor their share
-npm run round go --yes      # launch, then distribute
+npm run round -- status              # config, wallet, balance, window
+npm run round -- scan                # who deposited what
+npm run round -- launch --yes        # generate the meme, create it on pump.fun
+npm run round -- distribute --yes    # send every depositor their share
+npm run round -- rewards --yes       # pass creator fees on to holders
+npm run round -- go --yes            # launch, then distribute
 ```
+
+Note the bare `--`. Without it npm swallows flags like `--yes` instead of
+passing them to the script.
 
 **What `launch` does.** It rescans deposits, works out the buy amount as
 `min(total deposited, wallet balance − reserve)`, generates name, ticker,
@@ -183,6 +187,19 @@ artwork unless you pass `--no-art`.
 keeps `DEV_CUT_PERCENT`, and splits the rest strictly in proportion to each
 wallet's deposit. Payouts go out five per transaction, each one recorded in the
 round file, so re-running the command retries only what failed.
+
+**Creator rewards go to holders.** pump.fun pays the coin's creator a share of
+every trade, into a vault owned by the creator wallet. `rewards` claims that and
+splits it over whoever holds the coin at that moment, in proportion to their
+balance. The creator keeps `DEV_CUT_PERCENT`, which is 0.
+
+The bonding curve holds the unsold supply, so it is excluded, as is the creator
+wallet itself. Shares below `--min` (0.00001 SOL by default) are dropped rather
+than costing more in fees than they are worth. If nobody holds the coin, nothing
+is claimed and the vault keeps the SOL until someone does.
+
+The vault is per creator wallet, not per coin, so fees from several launches
+pool together. `--mint <address>` picks whose holders get the payout.
 
 **Deposits that cannot be paid.** Someone sending from an exchange has no wallet
 of their own in the transaction, so the sender cannot be identified. Those
