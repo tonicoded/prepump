@@ -412,6 +412,19 @@ async function rewards() {
 
   console.log(`  Holders          ${holders.length} wallets hold the coin`);
 
+  // --keep claims into the creator wallet and stops there.
+  if (flag("keep")) {
+    if (pending <= 0) die("There is nothing to claim.");
+    if (!flag("yes")) die("Add --yes to claim into the creator wallet.");
+    process.stdout.write("\n  Claiming to the creator wallet… ");
+    const signature = await collectCreatorFees(config);
+    console.log(C.green("done"));
+    const after = await connection.getBalance(wallet.publicKey);
+    console.log(`  Wallet now       ${sol(after)} SOL`);
+    console.log(`  ${C.dim(`https://solscan.io/tx/${signature}`)}\n`);
+    return;
+  }
+
   if (holders.length === 0) {
     console.log(
       C.yellow(
@@ -504,6 +517,7 @@ try {
         "  --no-art      launch even if the artwork failed",
         "  --mint <addr> which coin's holders get the rewards",
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
+        "  --keep        claim creator fees into your own wallet, do not split",
         "",
       ].join("\n"),
     );
