@@ -1,13 +1,7 @@
-/**
- * Outbound links. Fill these in before going live — they are the only
- * placeholders left in the interface.
- */
 export const LINKS = {
-  x: "#",
-  telegram: "#",
+  x: "https://x.com/prepumpsol?s=11",
+  telegram: "https://t.me/+Esoro50UlzQ1NTY0",
   docs: "#",
-  terms: "#",
-  privacy: "#",
 } as const;
 
 export const SOCIALS = [
