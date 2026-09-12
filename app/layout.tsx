@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Shell } from "@/components/layout/Shell";
 import { WalletProvider } from "@/providers/WalletProvider";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Shell>{children}</Shell>
           </RoundProvider>
         </WalletProvider>
+        <Analytics />
       </body>
     </html>
   );
