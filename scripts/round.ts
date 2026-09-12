@@ -10,16 +10,30 @@
  * Run it yourself when the countdown reaches zero. Nothing here is scheduled.
  */
 
-import { Connection, PublicKey } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import { readRoundConfig } from "../lib/round/config.ts";
 import {
   loadRound,
+  findRoundByMint,
   loadUsedDepositSignatures,
   saveRound,
   roundFile,
   type Payout,
   type RoundRecord,
 } from "../lib/round/store.ts";
+import {
+  loadOrCreateOwnerWallet,
+  loadOwnerWallet,
+  ownerSecretBase58,
+  ownerWalletRelativeFile,
+} from "../lib/round/owner-wallet.ts";
 import { scanDeposits } from "../lib/round/deposits.ts";
 import { generateMeme } from "../lib/round/meme.ts";
 import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
@@ -96,6 +110,8 @@ const short = (value: string) => `${value.slice(0, 4)}…${value.slice(-4)}`;
 const stamp = (ms: number) =>
   ms ? new Date(ms).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "not set";
 
+const FUNDING_TX_FEE_LAMPORTS = 10_000;
+
 
 function die(message: string): never {
   console.error(`\n${C.red("✖")} ${message || "Unknown error"}\n`);
@@ -123,6 +139,37 @@ function blankRecord(depositWallet: string): RoundRecord {
     deposits: [],
     totalLamports: 0,
   };
+}
+
+function signingWallet(record: RoundRecord | null): Keypair {
+  return record?.ownerWallet
+    ? loadOwnerWallet(record.roundId, record.ownerWallet.address)
+    : parseWallet(config.walletSecret);
+}
+
+async function fundOwnerWallet(
+  depositWallet: Keypair,
+  ownerWallet: Keypair,
+  requiredLamports: number,
+) {
+  const current = await connection.getBalance(ownerWallet.publicKey);
+  const missing = Math.max(0, requiredLamports - current);
+  if (missing === 0) return { signature: undefined, lamports: 0 };
+
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: depositWallet.publicKey,
+      toPubkey: ownerWallet.publicKey,
+      lamports: missing,
+    }),
+  );
+  const signature = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [depositWallet],
+    { commitment: "confirmed", maxRetries: 3 },
+  );
+  return { signature, lamports: missing };
 }
 
 /* ------------------------------- commands ------------------------------- */
@@ -155,6 +202,10 @@ async function status() {
     console.log(`  Deposits         ${record.deposits.length} wallets · ${sol(record.totalLamports)} SOL`);
     if (record.launch) {
       console.log(`  Launched         ${record.token?.name} ($${record.token?.ticker})`);
+      if (record.ownerWallet) {
+        console.log(`  Owner            ${record.ownerWallet.address}`);
+        console.log(`  Owner key        ${record.ownerWallet.keyFile}`);
+      }
       console.log(`  Mint             ${record.launch.mint}`);
       console.log(`  pump.fun         https://pump.fun/coin/${record.launch.mint}`);
     }
@@ -238,7 +289,7 @@ async function scan() {
 
 async function launch() {
   requireWindow();
-  const wallet = parseWallet(config.walletSecret);
+  const depositWallet = parseWallet(config.walletSecret);
 
   let record = loadRound(config.roundId);
   if (record?.launch && !flag("force")) {
@@ -251,7 +302,20 @@ async function launch() {
   record = record?.scannedAt ? record : await scan();
   if (!record) die("Nothing to launch.");
 
-  const balance = await connection.getBalance(wallet.publicKey);
+  const ownerWallet = loadOrCreateOwnerWallet(record.roundId);
+  record.ownerWallet = record.ownerWallet ?? {
+    address: ownerWallet.publicKey.toBase58(),
+    keyFile: ownerWalletRelativeFile(record.roundId),
+    createdAt: new Date().toISOString(),
+  };
+  if (record.ownerWallet.address !== ownerWallet.publicKey.toBase58()) {
+    die("The saved owner key does not match this round's owner address.");
+  }
+  saveRound(record);
+
+  const depositBalance = await connection.getBalance(depositWallet.publicKey);
+  const ownerBalance = await connection.getBalance(ownerWallet.publicKey);
+  const balance = depositBalance + ownerBalance;
   const pooledSol = record.totalLamports / 1e9;
 
   // pump.fun's create fee and the mint/metadata rent come off the top: they
@@ -276,7 +340,7 @@ async function launch() {
   // free balance divided by that multiplier, not simply the free balance.
   const multiplier = 1 + config.buyFeePercent / 100;
   const spendableLamports = Math.floor(
-    Math.max(0, balance - flatLamports) / multiplier,
+    Math.max(0, balance - flatLamports - FUNDING_TX_FEE_LAMPORTS) / multiplier,
   );
 
   const forced = Number(option("buy"));
@@ -288,15 +352,17 @@ async function launch() {
   const buyLamports = Math.max(0, Math.min(targetLamports, spendableLamports));
   const buySol = Math.floor(buyLamports / 1000) / 1e6;
 
-  if (balance < flatLamports) {
+  if (balance < flatLamports + FUNDING_TX_FEE_LAMPORTS) {
     die(
       `Wallet holds ${sol(balance)} SOL. A launch needs about ${overhead.toFixed(6)} SOL ` +
-        `before any buy, for the rent on the mint and metadata accounts. Top it up.`,
+        `plus a funding transaction before any buy. Top it up.`,
     );
   }
 
   console.log(`\n${C.bold("T-0 sequence")}`);
-  console.log(`  Wallet           ${sol(balance)} SOL`);
+  console.log(`  Deposit wallet   ${sol(depositBalance)} SOL`);
+  console.log(`  Fresh owner      ${ownerWallet.publicKey.toBase58()}`);
+  console.log(`  Owner key        ${ownerWalletRelativeFile(record.roundId)}`);
   console.log(`  Pooled           ${pooledSol.toFixed(4)} SOL from ${record.deposits.length} wallets`);
   console.log(
     `  Rent + fees      ${C.dim(`${overhead.toFixed(6)} SOL + ${config.buyFeePercent}% of the buy`)}`,
@@ -328,6 +394,24 @@ async function launch() {
     die("The artwork failed. Re-run, or pass --no-art to launch with the PREPUMP mark.");
   }
 
+  const requiredOwnerLamports =
+    flatLamports + Math.ceil(buyLamports * multiplier);
+  process.stdout.write("  Funding owner wallet… ");
+  const funding = await fundOwnerWallet(
+    depositWallet,
+    ownerWallet,
+    requiredOwnerLamports,
+  );
+  if (funding.signature) {
+    record.ownerWallet.fundingSignature = funding.signature;
+    record.ownerWallet.fundedLamports =
+      (record.ownerWallet.fundedLamports ?? 0) + funding.lamports;
+    saveRound(record);
+    console.log(C.green(`${sol(funding.lamports)} SOL`));
+  } else {
+    console.log(C.green("already funded"));
+  }
+
   process.stdout.write("  Creating on pump.fun… ");
   const result = await createPumpToken(
     config,
@@ -338,6 +422,7 @@ async function launch() {
       imageDataUrl: meme.imageDataUrl,
     },
     buySol,
+    ownerWallet,
   );
   console.log(C.green("done"));
 
@@ -352,15 +437,18 @@ async function launch() {
 
   console.log(`\n  ${C.bold(meme.name)} ($${meme.ticker}) — ${meme.tagline}`);
   console.log(`  Mint             ${result.mint}`);
+  console.log(`  Owner            ${ownerWallet.publicKey.toBase58()}`);
+  console.log(`  Private key      ${ownerWalletRelativeFile(record.roundId)} ${C.dim("(chmod 600)")}`);
+  console.log(`  Show for import  npm run round -- owner --round ${record.roundId} --show-secret`);
   console.log(`  Transaction      https://solscan.io/tx/${result.signature}`);
   console.log(`  pump.fun         https://pump.fun/coin/${result.mint}\n`);
   return record;
 }
 
 async function distribute() {
-  const wallet = parseWallet(config.walletSecret);
   const record = loadRound(config.roundId);
   if (!record?.launch) die("This round has not launched yet.");
+  const wallet = signingWallet(record);
 
   const mint = new PublicKey(record.launch.mint);
   const programId = await resolveTokenProgram(connection, mint);
@@ -441,10 +529,14 @@ async function distribute() {
  * the creator wallet claims it, then splits it over whoever holds the coin.
  */
 async function rewards() {
-  const wallet = parseWallet(config.walletSecret);
-  const record = loadRound(config.roundId);
-  const mintAddress = option("mint") ?? record?.launch?.mint;
+  const configuredRecord = loadRound(config.roundId);
+  const requestedMint = option("mint");
+  const record = requestedMint
+    ? findRoundByMint(requestedMint)
+    : configuredRecord;
+  const mintAddress = requestedMint ?? record?.launch?.mint;
   if (!mintAddress) die("No mint. Launch a round first, or pass --mint <address>.");
+  const wallet = signingWallet(record);
 
   const mint = new PublicKey(mintAddress);
   const vault = creatorVault(wallet.publicKey);
@@ -470,7 +562,7 @@ async function rewards() {
       die("Add --yes to claim into the creator wallet, or --split to share it with holders.");
     }
     process.stdout.write("\n  Claiming to the creator wallet… ");
-    const signature = await collectCreatorFees(config);
+    const signature = await collectCreatorFees(config, wallet);
     console.log(C.green("done"));
     const after = await connection.getBalance(wallet.publicKey);
     console.log(`  Wallet now       ${sol(after)} SOL`);
@@ -492,7 +584,7 @@ async function rewards() {
   if (pending > 0) {
     if (!flag("yes")) die("Add --yes to claim and pay out.");
     process.stdout.write("  Claiming… ");
-    const signature = await collectCreatorFees(config);
+    const signature = await collectCreatorFees(config, wallet);
     console.log(C.green("done"));
     console.log(`  ${C.dim(`https://solscan.io/tx/${signature}`)}`);
   } else {
@@ -543,6 +635,27 @@ async function rewards() {
   for (const failure of failed.slice(0, 5)) {
     console.log(C.red(`    ${short(failure.wallet)} — ${failure.error}`));
   }
+}
+
+function owner() {
+  const requested = Number(option("round"));
+  const roundId = Number.isInteger(requested) && requested > 0
+    ? requested
+    : config.roundId;
+  const record = loadRound(roundId);
+  if (!record?.ownerWallet) die(`Round #${roundId} has no separate owner wallet.`);
+  const wallet = loadOwnerWallet(roundId, record.ownerWallet.address);
+
+  console.log(`\n${C.bold(`Owner wallet · round #${String(roundId).padStart(3, "0")}`)}`);
+  console.log(`  Address          ${wallet.publicKey.toBase58()}`);
+  console.log(`  Private key      ${ownerWalletRelativeFile(roundId)} ${C.dim("(chmod 600)")}`);
+  if (flag("show-secret")) {
+    console.log(`  Import secret    ${ownerSecretBase58(roundId)}`);
+    console.log(C.yellow("  Keep this secret offline. Anyone with it controls the creator wallet."));
+  } else {
+    console.log(`  Show for import  npm run round -- owner --round ${roundId} --show-secret`);
+  }
+  console.log("");
 }
 
 
@@ -599,6 +712,7 @@ try {
   else if (command === "launch") await launch();
   else if (command === "distribute") await distribute();
   else if (command === "rewards") await rewards();
+  else if (command === "owner") owner();
   else if (command === "auto") await auto();
   else if (command === "go") {
     await launch();
@@ -607,7 +721,7 @@ try {
     console.log(
       [
         "",
-        "Usage: npm run round <status|scan|launch|distribute|rewards|auto|go> [options]",
+        "Usage: npm run round <status|scan|launch|distribute|rewards|owner|auto|go> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
         "  --now         launch before ROUND_CLOSES_AT",
@@ -620,6 +734,8 @@ try {
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
         "  --split       share creator fees with holders instead of keeping them",
         "  --rewards     with `auto`, also claim creator fees after the launch",
+        "  --round <id>  select a round for the owner command",
+        "  --show-secret print an owner key for wallet import (sensitive)",
         "",
       ].join("\n"),
     );

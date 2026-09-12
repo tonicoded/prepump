@@ -228,8 +228,9 @@ export async function createPumpToken(
   config: RoundConfig,
   draft: TokenDraft,
   buySol: number,
+  walletOverride?: Keypair,
 ) {
-  const wallet = parseWallet(config.walletSecret);
+  const wallet = walletOverride ?? parseWallet(config.walletSecret);
   const connection = new Connection(config.rpcUrl, "confirmed");
 
   const balance = await connection.getBalance(wallet.publicKey);

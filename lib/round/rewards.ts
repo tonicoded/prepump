@@ -52,8 +52,11 @@ export async function claimableLamports(
   return Math.max(0, info.lamports - rent);
 }
 
-export async function collectCreatorFees(config: RoundConfig) {
-  const wallet = parseWallet(config.walletSecret);
+export async function collectCreatorFees(
+  config: RoundConfig,
+  walletOverride?: Keypair,
+) {
+  const wallet = walletOverride ?? parseWallet(config.walletSecret);
   const connection = new Connection(config.rpcUrl, "confirmed");
 
   const response = await fetch(config.pumpPortalUrl, {

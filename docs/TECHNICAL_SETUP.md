@@ -196,6 +196,7 @@ npm run round -- scan                # who deposited what
 npm run round -- launch --yes        # generate the meme, create it on pump.fun
 npm run round -- distribute --yes    # send every depositor their share
 npm run round -- rewards --yes       # claim creator fees to the dev wallet
+npm run round -- owner               # show this round's coin-owner wallet
 npm run round -- go --yes            # launch, then distribute
 npm run round -- auto --yes          # wait for T-0, then do all of it
 ```
@@ -216,8 +217,22 @@ start time as the close. It cannot be combined with `--last`.
 
 **What `launch` does.** It rescans deposits, works out the buy amount as
 `min(total deposited, wallet balance − reserve)`, generates name, ticker,
-description and artwork, and only then creates the token with that SOL as the
-initial buy. Everything lands in `.round/round-001.json`.
+description and artwork, while preparing one fresh owner wallet for that round.
+Only after the artwork passes its checks does the permanent deposit wallet fund
+that owner with the buy plus required launch and payout costs. The fresh wallet
+creates the token, receives the initial buy, distributes the tokens and owns
+that coin's creator-reward vault. Public round
+data lands in `.round/round-001.json`; its private key is stored separately in
+`.round/owners/` with `0600` permissions. The entire `.round/` directory is
+git-ignored.
+
+The launch output prints the owner address and key-file path. To import it into
+a wallet, reveal the base58 secret explicitly (this writes the secret to your
+terminal history/output, so only do it privately):
+
+```bash
+npm run round -- owner --round 1 --show-secret
+```
 
 It refuses to run before `ROUND_CLOSES_AT` unless you pass `--now`, refuses to
 launch a round twice unless you pass `--force`, and refuses to launch without
@@ -251,8 +266,9 @@ them. Overlapping rolling windows such as repeated `--last 60` scans therefore
 cannot count the same deposit in two rounds.
 
 **Creator rewards.** pump.fun pays the coin's creator a share of every trade,
-into a vault owned by the creator wallet. `rewards` claims that into the dev
-wallet, which is the default.
+into a vault owned by the per-round owner wallet. `rewards` automatically loads
+the matching owner key and claims into that wallet. Legacy rounds without a
+separate owner continue using `LAUNCH_WALLET_SECRET_KEY`.
 
 Add `--split` to share it with holders instead: it snapshots who holds the coin
 at that moment and pays out in proportion to their balance, keeping
@@ -261,8 +277,9 @@ excluded, as is the creator wallet itself, and shares below `--min` (0.00001 SOL
 are dropped rather than costing more in fees than they are worth. If nobody
 holds the coin, nothing is claimed and the vault keeps the SOL.
 
-The vault is per creator wallet, not per coin, so fees from several launches
-pool together. `--mint <address>` picks whose holders get the payout.
+Every new coin has a separate creator vault because every round now has a
+separate creator wallet. `--mint <address>` finds the matching local round and
+uses its owner key when claiming or splitting rewards.
 
 **Deposits that cannot be paid.** Someone sending from an exchange has no wallet
 of their own in the transaction, so the sender cannot be identified. Those

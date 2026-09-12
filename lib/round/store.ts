@@ -24,6 +24,14 @@ export type RoundRecord = {
   deposits: Deposit[];
   totalLamports: number;
 
+  ownerWallet?: {
+    address: string;
+    keyFile: string;
+    createdAt: string;
+    fundingSignature?: string;
+    fundedLamports?: number;
+  };
+
   token?: {
     name: string;
     ticker: string;
@@ -62,6 +70,25 @@ export function loadRound(roundId: number): RoundRecord | null {
   } catch {
     return null;
   }
+}
+
+export function findRoundByMint(mint: string): RoundRecord | null {
+  try {
+    for (const name of readdirSync(DIR)) {
+      if (!/^round-\d+\.json$/.test(name)) continue;
+      try {
+        const record = JSON.parse(
+          readFileSync(path.join(DIR, name), "utf8"),
+        ) as RoundRecord;
+        if (record.launch?.mint === mint) return record;
+      } catch {
+        // Ignore a damaged unrelated round record.
+      }
+    }
+  } catch {
+    // No rounds exist yet.
+  }
+  return null;
 }
 
 /**
