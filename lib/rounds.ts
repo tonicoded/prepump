@@ -29,3 +29,17 @@ export const UPCOMING_ROUND: Round = {
 export const PAST_ROUNDS: Round[] = [];
 
 export const roundLabel = (id: number) => `#${String(id).padStart(3, "0")}`;
+
+/**
+ * When the platform goes live. The homepage counts down to it.
+ * Override with NEXT_PUBLIC_PLATFORM_LAUNCH_AT (ISO timestamp) without a code change.
+ */
+export const PLATFORM_LAUNCH_AT = (() => {
+  const configured = Date.parse(process.env.NEXT_PUBLIC_PLATFORM_LAUNCH_AT ?? "");
+  return Number.isFinite(configured)
+    ? configured
+    : Date.UTC(2026, 8, 13, 9, 0, 0); // 13 Sep 2026, 09:00 UTC (11:00 NL)
+})();
+
+/** The loader fills across this final stretch before launch. */
+export const LAUNCH_LOADER_WINDOW_MS = 24 * 60 * 60 * 1000;

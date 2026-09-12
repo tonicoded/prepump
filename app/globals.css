@@ -411,6 +411,73 @@ a {
   animation: pp-loader-block 1.3s steps(2, end) infinite;
 }
 
+/* The countdown card lays its chips out in a row instead of pinning them. */
+.meme-coming-card .meme-loader-status,
+.meme-coming-card .meme-loader-code {
+  position: static;
+}
+
+/* Countdown inside the coming-soon card */
+.meme-countdown {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin-top: 0.2rem;
+}
+
+.meme-countdown-digits {
+  display: block;
+  min-width: 2ch;
+  color: #fffdf0;
+  font-size: clamp(2rem, min(7vh, 5.2vw), 3.6rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  text-align: center;
+  text-shadow: 0 0 22px rgb(123 240 168 / 0.25);
+}
+
+.meme-countdown-compact .meme-countdown-digits {
+  font-size: clamp(1.6rem, 9vw, 2.3rem);
+}
+
+.meme-countdown-colon {
+  margin: 0 clamp(0.3rem, 1.2vw, 0.7rem);
+  color: rgb(123 240 168 / 0.55);
+  font-size: clamp(1.4rem, min(5vh, 3.8vw), 2.6rem);
+  font-weight: 900;
+  line-height: 1.05;
+  animation: pp-cooking-dot 1s steps(2, end) infinite;
+}
+
+.meme-countdown-compact .meme-countdown-colon {
+  font-size: clamp(1.1rem, 6.5vw, 1.7rem);
+}
+
+.meme-countdown-label {
+  margin-top: 0.3rem;
+  color: rgb(255 255 255 / 0.4);
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.9vh, 9px);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Loader in progress mode: lit blocks are time elapsed, the next one pulses */
+.meme-block-loader.is-progress span {
+  animation: none;
+}
+
+.meme-block-loader.is-progress span.on {
+  opacity: 1;
+  box-shadow: 0 0 10px rgb(123 240 168 / 0.45);
+}
+
+.meme-block-loader.is-progress span.next {
+  animation: pp-loader-block 1.3s steps(2, end) infinite;
+}
+
 .meme-extras {
   pointer-events: none;
   position: absolute;

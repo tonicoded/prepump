@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { LaunchCountdown } from "./LaunchCountdown";
 import { ButtonLink } from "@/components/ui/Button";
 import { IconExternal } from "@/components/ui/Icons";
@@ -11,7 +11,12 @@ import {
   formatSol,
   formatStamp,
 } from "@/lib/format";
-import { roundLabel } from "@/lib/rounds";
+import {
+  LAUNCH_LOADER_WINDOW_MS,
+  PLATFORM_LAUNCH_AT,
+  roundLabel,
+} from "@/lib/rounds";
+import { breakdown, useNow } from "@/hooks/useCountdown";
 import { useRound } from "@/providers/RoundProvider";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
@@ -197,32 +202,120 @@ function RotatingHeadline() {
   );
 }
 
+const subscribeNever = () => () => {};
+
+/** False during the server render and hydration, true afterwards. */
+function useMounted() {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+}
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const launchDate = new Date(PLATFORM_LAUNCH_AT);
+const LAUNCH_UTC = `${pad(launchDate.getUTCDate())} ${MONTHS[launchDate.getUTCMonth()]}, ${pad(launchDate.getUTCHours())}:${pad(launchDate.getUTCMinutes())}`;
+
+const LAUNCH_NL = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/Amsterdam",
+}).format(PLATFORM_LAUNCH_AT);
+
 function ComingSoon({ compact }: { compact: boolean }) {
+  const mounted = useMounted();
+  const now = useNow(1000);
+  const left = breakdown(PLATFORM_LAUNCH_AT - now);
+  const live = mounted && left.expired;
+
+  // Blocks light up across the final day; the next one pulses.
+  const progress = Math.min(
+    1,
+    Math.max(0, 1 - (PLATFORM_LAUNCH_AT - now) / LAUNCH_LOADER_WINDOW_MS),
+  );
+  const lit = Math.floor(progress * 12);
+
+  const groups = [
+    ...(left.days > 0 ? [{ value: left.days, label: "days" }] : []),
+    { value: left.hours, label: "hrs" },
+    { value: left.minutes, label: "min" },
+    { value: left.seconds, label: "sec" },
+  ];
+
   return (
     <div
       className="meme-coming-card flex flex-col items-center"
-      role="status"
-      aria-label="Launch preparations in progress"
+      role="timer"
+      aria-label={`Platform launch on ${LAUNCH_UTC} UTC`}
     >
-      <div className="meme-coming-heading relative flex w-full items-center justify-center">
-        <span className="meme-loader-status">
-          <span className="meme-loader-dot" /> cooking
+      <div className="flex w-full items-center justify-between gap-2">
+        <span className="meme-loader-status static">
+          <span className="meme-loader-dot" /> {live ? "live" : "cooking"}
         </span>
+        <span className="meme-loader-code static ml-auto">
+          {LAUNCH_UTC} UTC
+        </span>
+      </div>
+
+      <p className="mt-[clamp(0.5rem,1.4vh,0.8rem)] font-mono text-[clamp(8px,1.05vh,10px)] font-black tracking-[0.2em] text-white/50 uppercase">
+        {live ? "It is launch time" : "Platform launch in"}
+      </p>
+
+      {live ? (
         <p
           className={`${
             compact
               ? "text-[clamp(1.375rem,8.5vw,2rem)]"
               : "text-[clamp(1.5rem,min(5.8vh,4.5vw),3.25rem)]"
-          } leading-[0.95] font-black tracking-[0.045em]`}
+          } mt-1 leading-[0.95] font-black tracking-[0.045em]`}
         >
-          COMING SOON!
+          WE&rsquo;RE LIVE!
         </p>
-        <span className="meme-loader-code">T–?</span>
-      </div>
+      ) : (
+        <div
+          className={`meme-countdown ${compact ? "meme-countdown-compact" : ""}`}
+        >
+          {groups.map((group, index) => (
+            <div key={group.label} className="flex items-start">
+              {index > 0 && (
+                <span className="meme-countdown-colon" aria-hidden>
+                  :
+                </span>
+              )}
+              <div className="flex flex-col items-center">
+                <span className="meme-countdown-digits num">
+                  {mounted ? pad(group.value) : "--"}
+                </span>
+                <span className="meme-countdown-label">{group.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <div className="meme-block-loader mt-[clamp(0.65rem,1.8vh,1rem)] w-full" aria-hidden>
+      <div
+        className={`meme-block-loader mt-[clamp(0.65rem,1.8vh,1rem)] w-full ${
+          mounted ? "is-progress" : ""
+        }`}
+        aria-hidden
+      >
         {Array.from({ length: 12 }, (_, index) => (
-          <span key={index} style={{ animationDelay: `${index * 80}ms` }} />
+          <span
+            key={index}
+            className={
+              !mounted
+                ? undefined
+                : live || index < lit
+                  ? "on"
+                  : index === lit
+                    ? "next"
+                    : undefined
+            }
+            style={{ animationDelay: `${index * 80}ms` }}
+          />
         ))}
       </div>
 
@@ -232,7 +325,7 @@ function ComingSoon({ compact }: { compact: boolean }) {
       </div>
 
       <p className="mt-[clamp(0.55rem,1.4vh,0.8rem)] font-mono text-[clamp(7px,0.9vh,9px)] font-bold tracking-[0.14em] text-white/35 uppercase">
-        Launch date to be announced · Deposits are not open
+        {LAUNCH_UTC} UTC · {LAUNCH_NL} NL · Deposits open at launch
       </p>
     </div>
   );
