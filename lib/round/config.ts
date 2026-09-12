@@ -58,9 +58,16 @@ function timestamp(value: string | undefined, fallback: number) {
 
 export function readRoundConfig(env = process.env): RoundConfig {
   const closesAt = timestamp(env.ROUND_CLOSES_AT, 0);
+  // A round that only says when it closes is assumed to have been open for one
+  // cycle before that, so ROUND_OPENS_AT is optional.
+  const lengthHours = num(env.ROUND_LENGTH_HOURS, 168);
+  const opensAt =
+    timestamp(env.ROUND_OPENS_AT, 0) ||
+    (closesAt ? closesAt - lengthHours * 3_600_000 : 0);
+
   return {
     roundId: Math.max(1, Math.trunc(num(env.ROUND_ID, 1))),
-    opensAt: timestamp(env.ROUND_OPENS_AT, 0),
+    opensAt,
     closesAt,
 
     rpcUrl: clean(env.SOLANA_RPC_URL) ?? "https://api.mainnet-beta.solana.com",

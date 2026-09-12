@@ -269,6 +269,7 @@ async function launch() {
     die("Add --yes to confirm. This spends real SOL and creates a real token.");
   }
 
+
   process.stdout.write("  Generating meme… ");
   const meme = await generateMeme(config, process.env.ROUND_THEME, true);
   console.log(C.green(`${meme.name} ($${meme.ticker})`));
@@ -492,6 +493,52 @@ async function rewards() {
   }
 }
 
+
+/**
+ * Waits for the countdown, then runs the whole T-0 sequence on its own:
+ * scan, launch, distribute, and optionally pass the creator fees on.
+ * Leave it running in a terminal; nothing is scheduled anywhere else.
+ */
+async function auto() {
+  if (!config.closesAt) {
+    die("Set ROUND_CLOSES_AT in .env.local, or pass --last to run right now.");
+  }
+  // Check everything that could fail before committing to a long wait.
+  requireWindow();
+  parseWallet(config.walletSecret);
+  if (loadRound(config.roundId)?.launch && !flag("force")) {
+    die(`Round #${config.roundId} already launched. Bump ROUND_ID, or pass --force.`);
+  }
+  if (!flag("yes")) {
+    die("Add --yes. At T-0 this spends real SOL and creates a real token.");
+  }
+
+  const label = `#${String(config.roundId).padStart(3, "0")}`;
+  console.log(`\n${C.bold(`Waiting for round ${label}`)}`);
+  console.log(`  Window           ${stamp(config.opensAt)} → ${stamp(config.closesAt)}`);
+  console.log(`  Then             scan → launch → distribute${flag("rewards") ? " → rewards" : ""}`);
+  console.log(`  ${C.dim("Leave this running. Ctrl-C to stop.")}\n`);
+
+  while (Date.now() < config.closesAt) {
+    const left = config.closesAt - Date.now();
+    const h = Math.floor(left / 3_600_000);
+    const m = Math.floor((left % 3_600_000) / 60_000);
+    const sec = Math.floor((left % 60_000) / 1000);
+    process.stdout.write(
+      `\r  T-${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}   `,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  process.stdout.write("\r".padEnd(24) + "\r");
+  console.log(C.bold("  T-0. Going.\n"));
+
+  await launch();
+  await distribute();
+  if (flag("rewards")) await rewards();
+
+  console.log(C.green(`  Round ${label} is done.\n`));
+}
+
 /* --------------------------------- run ---------------------------------- */
 
 try {
@@ -500,6 +547,7 @@ try {
   else if (command === "launch") await launch();
   else if (command === "distribute") await distribute();
   else if (command === "rewards") await rewards();
+  else if (command === "auto") await auto();
   else if (command === "go") {
     await launch();
     await distribute();
@@ -507,7 +555,7 @@ try {
     console.log(
       [
         "",
-        "Usage: npm run round <status|scan|launch|distribute|rewards|go> [options]",
+        "Usage: npm run round <status|scan|launch|distribute|rewards|auto|go> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
         "  --now         launch before ROUND_CLOSES_AT",
@@ -518,6 +566,7 @@ try {
         "  --mint <addr> which coin's holders get the rewards",
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
         "  --keep        claim creator fees into your own wallet, do not split",
+        "  --rewards     with `auto`, also pass creator fees on after the launch",
         "",
       ].join("\n"),
     );

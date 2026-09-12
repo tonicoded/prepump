@@ -169,6 +169,7 @@ npm run round -- launch --yes        # generate the meme, create it on pump.fun
 npm run round -- distribute --yes    # send every depositor their share
 npm run round -- rewards --yes       # pass creator fees on to holders
 npm run round -- go --yes            # launch, then distribute
+npm run round -- auto --yes          # wait for T-0, then do all of it
 ```
 
 Note the bare `--`. Without it npm swallows flags like `--yes` instead of
@@ -182,6 +183,22 @@ initial buy. Everything lands in `.round/round-001.json`.
 It refuses to run before `ROUND_CLOSES_AT` unless you pass `--now`, refuses to
 launch a round twice unless you pass `--force`, and refuses to launch without
 artwork unless you pass `--no-art`.
+
+**Running it hands-off.** `auto` waits for `ROUND_CLOSES_AT` and then runs
+scan, launch and distribute by itself. Add `--rewards` and it passes the creator
+fees on to holders afterwards too.
+
+```bash
+npm run round -- auto --yes --rewards
+```
+
+Leave it running in a terminal and walk away. Everything that could refuse the
+launch — a missing wallet, a bad window, a round that already launched — is
+checked before the wait starts, not after it. There is still no scheduler
+anywhere: close the terminal and nothing fires.
+
+`ROUND_OPENS_AT` is optional. Left empty it is taken as `ROUND_CLOSES_AT` minus
+`ROUND_LENGTH_HOURS`, which defaults to one week.
 
 **What `distribute` does.** It reads how many tokens the buy actually produced,
 keeps `DEV_CUT_PERCENT`, and splits the rest strictly in proportion to each
