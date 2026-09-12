@@ -203,6 +203,7 @@ npm run round -- scan                # who deposited what
 npm run round -- launch --yes        # generate the meme, create it on pump.fun
 npm run round -- distribute --yes    # send every depositor their share
 npm run round -- rewards --yes       # claim creator fees to the dev wallet
+npm run round -- rewards --all --yes # claim every owner and sweep to main
 npm run round -- owner               # show this round's coin-owner wallet
 npm run round -- go --yes            # launch, then distribute
 npm run round -- auto --yes          # wait for T-0, then do all of it
@@ -287,6 +288,22 @@ holds the coin, nothing is claimed and the vault keeps the SOL.
 Every new coin has a separate creator vault because every round now has a
 separate creator wallet. `--mint <address>` finds the matching local round and
 uses its owner key when claiming or splitting rewards.
+
+To collect every generated owner-wallet at once, use:
+
+```bash
+npm run round -- rewards --all --yes
+```
+
+The command first claims the permanent wallet once for legacy coins, then
+claims each generated owner wallet independently. Everything above
+`WALLET_FLOOR_SOL` (plus a small transfer-fee buffer) is swept into the
+permanent `LAUNCH_WALLET_SECRET_KEY` / deposit wallet. It keeps that floor in
+every owner so the wallet can pay for future creator-fee claims. The operation
+is safe to repeat: a previously claimed vault reports nothing new, while any
+balance left behind by an interrupted sweep is recovered on the next run. One
+failed owner is reported but does not prevent the remaining owners from being
+processed.
 
 **Deposits that cannot be paid.** Someone sending from an exchange has no wallet
 of their own in the transaction, so the sender cannot be identified. Those
