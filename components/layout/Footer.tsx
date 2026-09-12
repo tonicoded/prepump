@@ -11,16 +11,16 @@ const FOOTER_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="relative z-30 shrink-0 border-t border-[var(--line-soft)]">
+    <footer className="meme-footer relative z-30 shrink-0">
       <div className="mx-auto flex min-h-[clamp(2.75rem,5vh,3.25rem)] w-full max-w-[112rem] items-center justify-between gap-4 px-[clamp(1rem,3vw,2.5rem)] py-3">
         <div className="flex items-center gap-4">
           <Wordmark size="sm" />
-          <span className="hidden text-[11.5px] text-faint sm:inline">
+          <span className="hidden text-[11.5px] font-bold text-white/50 sm:inline">
             Get in before the pump.
           </span>
         </div>
 
-        <p className="hidden max-w-[42rem] truncate text-[10.5px] text-ghost xl:block">
+        <p className="hidden max-w-[42rem] truncate text-[10.5px] text-white/35 xl:block">
           Crypto assets are highly volatile. Participation involves significant
           risk. Always verify transactions before signing.
         </p>
@@ -30,7 +30,7 @@ export function Footer() {
             <a
               key={l.label}
               href={l.href}
-              className="text-[11.5px] text-mute transition-colors hover:text-chalk"
+              className="text-[11.5px] font-bold text-white/60 transition-colors hover:text-pump-300"
             >
               {l.label}
             </a>

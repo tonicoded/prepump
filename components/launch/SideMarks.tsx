@@ -4,25 +4,25 @@ export function SideMarks() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 hidden xl:block"
+      className="pointer-events-none absolute inset-0 hidden 2xl:block"
     >
       <div className="absolute top-[8%] left-0 space-y-1">
         {LEFT.map((l) => (
-          <p key={l} className="label-xs text-ghost">
+          <p key={l} className="meme-side-label">
             {l}
           </p>
         ))}
       </div>
       <div className="absolute top-[44%] left-0 space-y-1">
         {["Get in", "before", "the pump."].map((l) => (
-          <p key={l} className="label-xs text-ghost">
+          <p key={l} className="meme-side-label">
             {l}
           </p>
         ))}
       </div>
       <div className="absolute top-[42%] right-0 space-y-1 text-right">
         {["Built for", "pump.fun", "on Solana"].map((l) => (
-          <p key={l} className="label-xs text-ghost">
+          <p key={l} className="meme-side-label">
             {l}
           </p>
         ))}

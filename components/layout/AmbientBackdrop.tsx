@@ -6,15 +6,15 @@ export function AmbientBackdrop() {
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
     >
-      {/* The mark, blown up and pushed almost all the way into the dark. */}
+      <div className="meme-halftone absolute inset-0" />
+
+      {/* Original PREPUMP mark remains visible as a giant watermark. */}
       <div
-        className="anim-drift absolute"
+        className="anim-drift absolute left-1/2 -translate-x-1/2"
         style={{
-          top: "clamp(-22rem, -24vh, -7rem)",
-          right: "clamp(-26rem, -17vw, -7rem)",
-          width: "clamp(30rem, 58vw, 58rem)",
-          height: "clamp(30rem, 58vw, 58rem)",
-          filter: "blur(2px)",
+          top: "clamp(7rem, 16vh, 11rem)",
+          width: "clamp(22rem, 46vw, 46rem)",
+          height: "clamp(22rem, 46vw, 46rem)",
         }}
       >
         <Image
@@ -22,25 +22,33 @@ export function AmbientBackdrop() {
           alt=""
           fill
           sizes="46vw"
-          className="object-contain opacity-[0.028] grayscale-[0.35]"
+          className="object-contain opacity-[0.08] brightness-0"
           priority
         />
       </div>
 
-      {/* Cold brand light pooling behind the hero. */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2"
-        style={{
-          top: "16%",
-          width: "min(70rem, 130vw)",
-          height: "32rem",
-          background:
-            "radial-gradient(50% 50% at 50% 50%, color-mix(in oklab, var(--color-pump-500) 9%, transparent), transparent 70%)",
-          filter: "blur(30px)",
-        }}
+      <div className="meme-art absolute inset-x-0 top-[13%] bottom-[8%] hidden sm:block">
+        <Image
+          src="/prepump-meme-collage.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-contain"
+          priority
+        />
+      </div>
+
+      <Image
+        src="/prepump-meme-collage.png"
+        alt=""
+        width={1983}
+        height={793}
+        sizes="128vw"
+        className="meme-art-mobile absolute top-[18%] left-1/2 h-auto w-[128vw] max-w-none -translate-x-1/2 sm:hidden"
+        priority
       />
 
-      <div className="vignette absolute inset-0" />
+      <div className="meme-speed-lines absolute inset-0" />
     </div>
   );
 }

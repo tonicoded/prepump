@@ -8,8 +8,8 @@ export function Wordmark({
   className?: string;
   size?: "sm" | "md";
 }) {
-  const mark = size === "sm" ? 16 : 20;
-  const word = size === "sm" ? 12 : 14;
+  const mark = size === "sm" ? 16 : 24;
+  const word = size === "sm" ? 12 : 17;
 
   return (
     <Link

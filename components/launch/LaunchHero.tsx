@@ -28,7 +28,7 @@ export function LaunchHero({ compact = false }: { compact?: boolean }) {
 
   const headline = compact
     ? "text-[clamp(1.375rem,7.2vw,2rem)]"
-    : "text-[clamp(1.75rem,min(6.4vh,5vw),4.25rem)]";
+    : "text-[clamp(2.1rem,min(8vh,6.4vw),5.5rem)]";
 
   /* ------------------------------- Revealed ------------------------------ */
   if (revealed) {
@@ -129,19 +129,19 @@ export function LaunchHero({ compact = false }: { compact?: boolean }) {
 
   /* --------------------------- Open or upcoming -------------------------- */
   return (
-    <div className="flex min-h-0 flex-col items-center justify-center text-center">
-      <span className="rounded-full border border-[var(--line-strong)] bg-ink-800/50 px-4 py-[0.4rem] font-mono text-[clamp(9px,1.2vh,11px)] tracking-[0.42em] text-chalk-dim uppercase">
-        Round {label}
+    <div className="meme-hero flex min-h-0 flex-col items-center justify-center text-center">
+      <span className="meme-round-sticker">
+        PREPUMP ROUND {label}
       </span>
 
       <h1
-        className={`mt-[clamp(0.75rem,2.4vh,1.75rem)] min-h-[1.88em] ${headline} leading-[0.94] font-bold tracking-[-0.035em] text-balance`}
+        className={`meme-headline mt-[clamp(0.75rem,2.4vh,1.75rem)] min-h-[1.72em] ${headline} leading-[0.86] font-black tracking-[-0.055em] text-balance`}
       >
         <RotatingHeadline />
       </h1>
 
       <p
-        className={`mt-[clamp(0.5rem,1.6vh,1rem)] max-w-[34rem] text-[clamp(0.75rem,1.8vh,1rem)] leading-snug text-mute ${
+        className={`meme-subcopy mt-[clamp(0.75rem,2vh,1.25rem)] max-w-[35rem] text-[clamp(0.75rem,1.8vh,1rem)] leading-snug ${
           compact ? "[@media(max-height:720px)]:hidden" : ""
         }`}
       >
@@ -183,38 +183,32 @@ function RotatingHeadline() {
     <span key={active} className="headline-rotate block">
       {firstLine}
       <br />
-      <span className="text-mute">{secondLine}</span>
+      <span className="meme-headline-secondary">{secondLine}</span>
     </span>
   );
 }
 
 function ComingSoon({ compact }: { compact: boolean }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="meme-coming-card flex flex-col items-center">
       <p
         className={`${
           compact
             ? "text-[clamp(1.375rem,8.5vw,2rem)]"
-            : "text-[clamp(1.625rem,min(6.6vh,5.2vw),3.75rem)]"
-        } leading-[0.95] font-bold tracking-[0.1em]`}
-        style={{
-          background: "var(--brand-gradient)",
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          color: "transparent",
-        }}
+            : "text-[clamp(1.5rem,min(5.8vh,4.5vw),3.25rem)]"
+        } leading-[0.95] font-black tracking-[0.06em]`}
       >
-        COMING SOON
+        COMING SOON!
       </p>
 
-      <div className="mt-[clamp(0.75rem,2.2vh,1.5rem)] h-px w-[min(22rem,64vw)] overflow-hidden bg-[var(--line)]">
+      <div className="mt-[clamp(0.6rem,1.8vh,1rem)] h-1 w-[min(22rem,64vw)] overflow-hidden rounded-full bg-white/15">
         <span
-          className="block h-full w-1/4 bg-pump-400/70"
+          className="block h-full w-1/4 rounded-full bg-pump-300"
           style={{ animation: "pp-sweep 3.2s ease-in-out infinite" }}
         />
       </div>
 
-      <p className="label-xs mt-[clamp(0.75rem,2vh,1.25rem)] text-faint">
+      <p className="mt-[clamp(0.6rem,1.6vh,1rem)] font-mono text-[clamp(8px,1vh,10px)] font-bold tracking-[0.16em] text-white/55 uppercase">
         Launch date to be announced · Deposits are not open
       </p>
     </div>
