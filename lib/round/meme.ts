@@ -25,59 +25,83 @@ const generatedMemeSchema = z.object({
 });
 
 /**
- * Subject buckets, sampled per round. Without them the model keeps landing on
- * cats and frogs; with them every round lands somewhere else.
+ * The joke is always the same shape as the stickers on the site: a real
+ * photographed thing, badly costumed, having a very bad or very stupid day on
+ * the chart. Subject and beat are sampled separately so rounds do not repeat.
  */
 const SUBJECTS = [
-  "an animal doing a human job",
-  "a household appliance with a personality problem",
-  "a piece of food that has given up",
-  "a mythological figure in modern clothes",
-  "a vehicle that should not be driving",
-  "an office worker losing their mind",
-  "a security guard of something worthless",
-  "a gym character with terrible advice",
-  "a deep sea creature with big opinions",
-  "a medieval peasant discovering technology",
-  "a bird that is clearly up to something",
-  "a statue that came to life and regrets it",
-  "an insect running a small business",
-  "a dog convinced it is a financial analyst",
-  "a plant that has seen too much",
-  "a cowboy in the wrong century",
-  "a wizard with one useless spell",
-  "a delivery driver for cursed packages",
-  "a reptile with an ego problem",
-  "a snowman aware of the forecast",
-  "a chef who cannot cook",
-  "a fish out of water, literally",
-  "a robot built for one pointless task",
-  "a farm animal with a superiority complex",
+  "a house cat",
+  "a golden retriever",
+  "a pigeon",
+  "a marble statue of a Greek god",
+  "a goat",
+  "a frog",
+  "a hamster",
+  "a raccoon",
+  "a cow",
+  "a pug",
+  "a seagull",
+  "a llama",
+  "a chimpanzee",
+  "a bulldog",
+  "a parrot",
+  "a duck",
+  "a turtle",
+  "a donkey",
+  "a walrus",
+  "a sloth",
+  "a crab",
+  "an owl",
+  "a bear",
+  "a chicken",
+  "a Renaissance oil-painting nobleman",
+  "an ancient Egyptian bust",
+  "a plastic garden gnome",
+  "a mall security guard",
+  "a medieval knight in armour",
+  "a deep sea diver in an old brass helmet",
 ];
 
-const MOODS = [
-  "smug",
-  "panicking",
-  "devastated",
-  "overconfident",
-  "exhausted",
-  "suspicious",
-  "delighted for no reason",
-  "deeply serious",
-  "unbothered",
-  "furious",
+/** What just happened to them. This is where the comedy actually lives. */
+const BEATS = [
+  "has just watched its entire portfolio go to zero and is screaming",
+  "sold at the exact bottom and is holding its head in both hands",
+  "is grinning with insane confidence while everything behind it burns",
+  "has been waiting so long for a green candle that it is covered in cobwebs",
+  "is crying while clutching a phone showing a red chart",
+  "is flexing enormous muscles over a single tiny coin",
+  "is asleep at a desk having missed the entire pump",
+  "is sweating through a cheap suit during a live interview",
+  "is pointing proudly at a chart that is going straight down",
+  "is eating instant noodles in a mansion it cannot afford",
+  "has too many monitors and clearly no idea what any of them say",
+  "is being handed an enormous bill and looks betrayed",
+  "is celebrating with champagne one second before the rug",
+  "is stuffing its cheeks with as many coins as it can hold",
+  "is wearing a neck brace and still refuses to sell",
+  "is doing a victory dance on a completely empty trading floor",
+  "has bloodshot eyes and has not slept since the launch",
+  "is holding a briefcase that is obviously empty",
+  "is trying to look serious in sunglasses two sizes too big",
+  "is presenting a roadmap drawn on a napkin",
 ];
 
-/** House style: the cut-out sticker memes already used across the site. */
+/**
+ * House style, copied from the stickers already on the site: photographic
+ * cut-outs, crudely combined, never illustration.
+ */
 const STYLE = [
-  "Low-fi internet meme sticker in the style of a photo cut-out collage.",
-  "Single subject, centred, filling most of the square frame.",
-  "Flat bright acid-green background, no scenery, no gradients.",
-  "Hard white sticker outline around the subject with a thin black edge.",
-  "Slightly over-sharpened, compressed, early-2010s forum meme energy.",
-  "No text, no letters, no numbers, no logos, no watermarks, no borders.",
-  "Original character only: no real people, celebrities, brands, or existing",
-  "meme characters such as Pepe, Doge, Wojak, Shiba or Chad.",
+  "Photographic meme sticker, cut out of real photographs.",
+  "Looks like a crude photo collage somebody made in five minutes:",
+  "real photographed subject, real photographed clothes and props pasted on,",
+  "slightly mismatched lighting and scale, visible rough cut-out edges.",
+  "Flat bright green background, nothing else in the scene.",
+  "Thick white sticker outline around the whole subject.",
+  "Slightly oversaturated and over-sharpened, low-fi internet meme energy.",
+  "Absolutely not an illustration, not a cartoon, not a 3D render, not digital",
+  "painting, not concept art, not a cute mascot.",
+  "No text, no letters, no numbers, no logos, no watermarks.",
+  "No real people, no celebrities, no existing meme characters.",
 ].join(" ");
 
 const FALLBACKS: GeneratedMeme[] = [
@@ -121,20 +145,23 @@ export async function generateMeme(
   const client = new OpenAI({ apiKey: config.openAiApiKey });
   const brief = theme?.trim()
     ? `Creative direction from the operator: ${theme.slice(0, 180)}`
-    : `This round's subject: ${pick(SUBJECTS)}. Its mood: ${pick(MOODS)}.`;
+    : `This round's meme: ${pick(SUBJECTS)} that ${pick(BEATS)}.`;
 
   const response = await client.responses.parse({
     model: config.openAiModel,
     store: false,
     instructions: [
-      "You invent one original meme coin for a Solana mystery launch.",
-      "The name and ticker must describe the character that will be in the",
-      "artwork, so somebody seeing the picture immediately gets the name.",
-      "Keep it funny and internet-native, never corporate.",
-      "description is one or two short sentences, under 200 characters.",
-      "imagePrompt describes only the character, its expression, its clothing",
-      "and its props, in one or two sentences. No style words, no background",
-      "description, no text in the image.",
+      "You write meme coins for a Solana mystery launch. Think 2016 forum",
+      "reaction image, not brand mascot. It has to be funny first.",
+      "The name is short, dumb and instantly readable, the kind of thing people",
+      "type in a chat. Two words at most. It must describe the thing in the",
+      "picture, so seeing the image explains the name.",
+      "tagline is one short punchline under 60 characters.",
+      "description is one or two sentences, under 200 characters, deadpan.",
+      "imagePrompt describes ONLY what is physically in the photo: the subject,",
+      "its exact facial expression, its clothes and its props. Be concrete and",
+      "visual. One or two sentences. No style words, no background, no text in",
+      "the image, no camera or lighting terms.",
       "Avoid trademarks, real people, existing meme characters, slurs, and any",
       "promise of profit.",
     ].join(" "),
