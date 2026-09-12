@@ -38,7 +38,7 @@ export const PLATFORM_LAUNCH_AT = (() => {
   const configured = Date.parse(process.env.NEXT_PUBLIC_PLATFORM_LAUNCH_AT ?? "");
   return Number.isFinite(configured)
     ? configured
-    : Date.UTC(2026, 8, 13, 9, 0, 0); // 13 Sep 2026, 09:00 UTC (11:00 NL)
+    : Date.UTC(2026, 8, 13, 19, 0, 0); // 13 Sep 2026, 19:00 UTC (21:00 NL)
 })();
 
 /** The loader fills across this final stretch before launch. */
