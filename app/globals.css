@@ -214,6 +214,28 @@ a {
   padding-right: 3rem;
 }
 
+.meme-nav-link {
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-1deg);
+  border: 2px solid #fffdf0;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  box-shadow: 3px 3px 0 var(--color-pump-400);
+  color: #fffdf0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.meme-nav-link:hover {
+  transform: rotate(1deg) translateY(-1px);
+  box-shadow: 4px 4px 0 var(--color-pump-400);
+}
+
 .meme-art {
   filter: saturate(1.1) contrast(1.02);
 }
@@ -348,6 +370,355 @@ a {
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ */
+/*  How it works                                                       */
+/* ------------------------------------------------------------------ */
+
+.how-page {
+  position: relative;
+  display: flex;
+  width: min(112rem, 100%);
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: clamp(0.55rem, 1.4vh, 0.9rem);
+  margin-inline: auto;
+  padding: clamp(0.75rem, 1.8vh, 1.25rem) clamp(0.75rem, 2.5vw, 2rem);
+}
+
+.how-header {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.how-kicker,
+.how-mini-label {
+  display: inline-flex;
+  border: 2px solid #080a09;
+  background: #fffdf0;
+  padding: 0.28rem 0.55rem;
+  box-shadow: 2px 2px 0 #080a09;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.9vh, 9px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.how-header h1 {
+  margin-top: clamp(0.45rem, 1.1vh, 0.7rem);
+  color: #080a09;
+  font-size: clamp(1.75rem, min(5vh, 4vw), 3.6rem);
+  font-weight: 950;
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+  text-shadow: 2px 2px 0 #fffdf0;
+}
+
+.how-header h1 span {
+  color: #fffdf0;
+  -webkit-text-stroke: 2px #080a09;
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 #080a09;
+}
+
+.how-header > p {
+  max-width: 45rem;
+  margin: clamp(0.4rem, 1vh, 0.65rem) auto 0;
+  color: rgb(8 10 9 / 0.72);
+  font-size: clamp(0.7rem, 1.4vh, 0.875rem);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.how-steps {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 48%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.5rem, 1vw, 0.8rem);
+}
+
+.how-step-card {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 3px solid #080a09;
+  background: #fffdf0;
+  padding: clamp(0.65rem, 1.6vh, 1rem);
+  box-shadow: 5px 5px 0 #080a09;
+}
+
+.how-step-card:nth-child(even) {
+  transform: rotate(0.5deg);
+  background: #080a09;
+  color: #fffdf0;
+  box-shadow: 5px 5px 0 #fffdf0;
+}
+
+.how-step-card:nth-child(3) {
+  transform: rotate(-0.5deg);
+  background: #ffed58;
+}
+
+.how-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.how-step-number {
+  display: grid;
+  width: clamp(1.7rem, 4vh, 2.3rem);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.2vh, 12px);
+  font-weight: 900;
+}
+
+.how-step-label {
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.95vh, 9px);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.how-step-card h2 {
+  margin-top: clamp(0.45rem, 1.2vh, 0.75rem);
+  font-size: clamp(0.9rem, 2.1vh, 1.25rem);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.how-step-card > p {
+  margin-top: clamp(0.3rem, 0.8vh, 0.5rem);
+  color: rgb(8 10 9 / 0.68);
+  font-size: clamp(0.62rem, 1.35vh, 0.76rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.how-step-card:nth-child(even) > p {
+  color: rgb(255 253 240 / 0.64);
+}
+
+.how-step-stamp {
+  width: max-content;
+  margin-top: auto;
+  transform: rotate(-2deg);
+  border: 2px solid currentColor;
+  padding: 0.22rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: clamp(6px, 0.8vh, 8px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.how-bottom {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 38%;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.6fr);
+  gap: clamp(0.5rem, 1vw, 0.8rem);
+}
+
+.how-why-card,
+.how-math-card {
+  min-height: 0;
+  border: 3px solid #080a09;
+  padding: clamp(0.65rem, 1.5vh, 1rem);
+}
+
+.how-why-card {
+  transform: rotate(-0.4deg);
+  background: #ff5ba7;
+  box-shadow: 5px 5px 0 #080a09;
+}
+
+.how-why-card h2,
+.how-math-card h2 {
+  margin-top: clamp(0.35rem, 0.8vh, 0.55rem);
+  font-size: clamp(0.9rem, 2vh, 1.25rem);
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.how-why-card p,
+.how-math-card p {
+  margin-top: clamp(0.25rem, 0.6vh, 0.4rem);
+  font-size: clamp(0.58rem, 1.25vh, 0.72rem);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.how-math-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+  gap: clamp(0.7rem, 1.5vw, 1.25rem);
+  background: #fffdf0;
+  box-shadow: 5px 5px 0 #080a09;
+}
+
+.how-mechanics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.how-mechanics div {
+  border: 2px solid #080a09;
+  background: #080a09;
+  padding: clamp(0.35rem, 0.8vh, 0.55rem);
+  color: #fffdf0;
+}
+
+.how-mechanics dt {
+  color: var(--color-pump-300);
+  font-family: var(--font-mono);
+  font-size: clamp(0.7rem, 1.5vh, 0.9rem);
+  font-weight: 900;
+}
+
+.how-mechanics dd {
+  margin-top: 0.15rem;
+  color: rgb(255 253 240 / 0.64);
+  font-size: clamp(0.5rem, 1vh, 0.62rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+@media (max-width: 639px) {
+  .how-page {
+    gap: 0.45rem;
+    padding: 0.55rem 0.5rem;
+  }
+
+  .how-kicker {
+    padding: 0.2rem 0.35rem;
+    font-size: 6px;
+  }
+
+  .how-header h1 {
+    margin-top: 0.35rem;
+    font-size: clamp(1.35rem, 6.8vw, 1.7rem);
+  }
+
+  .how-header h1 span {
+    -webkit-text-stroke-width: 1px;
+  }
+
+  .how-header > p {
+    display: none;
+  }
+
+  .how-steps {
+    flex-basis: 46%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .how-step-card {
+    border-width: 2px;
+    padding: 0.45rem;
+    box-shadow: 3px 3px 0 #080a09;
+  }
+
+  .how-step-card:nth-child(even) {
+    box-shadow: 3px 3px 0 #fffdf0;
+  }
+
+  .how-step-number {
+    width: 1.45rem;
+    border-width: 1px;
+    font-size: 8px;
+  }
+
+  .how-step-label {
+    font-size: 6px;
+  }
+
+  .how-step-card h2 {
+    margin-top: 0.3rem;
+    font-size: 11px;
+  }
+
+  .how-step-card > p {
+    margin-top: 0.2rem;
+    font-size: 8px;
+    line-height: 1.2;
+  }
+
+  .how-step-stamp {
+    border-width: 1px;
+    padding: 0.12rem 0.25rem;
+    font-size: 5px;
+  }
+
+  .how-bottom {
+    flex-basis: 35%;
+    grid-template-columns: 0.82fr 1.18fr;
+    gap: 0.35rem;
+  }
+
+  .how-why-card,
+  .how-math-card {
+    border-width: 2px;
+    padding: 0.45rem;
+    box-shadow: 3px 3px 0 #080a09;
+  }
+
+  .how-why-card h2,
+  .how-math-card h2 {
+    margin-top: 0.25rem;
+    font-size: 10px;
+  }
+
+  .how-why-card p,
+  .how-math-card p {
+    margin-top: 0.2rem;
+    font-size: 7px;
+    line-height: 1.2;
+  }
+
+  .how-mini-label {
+    border-width: 1px;
+    padding: 0.15rem 0.25rem;
+    box-shadow: 1px 1px 0 #080a09;
+    font-size: 5px;
+  }
+
+  .how-math-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .how-mechanics {
+    flex: 1;
+    gap: 0.2rem;
+  }
+
+  .how-mechanics div {
+    padding: 0.25rem;
+  }
+
+  .how-mechanics dt {
+    font-size: 8px;
+  }
+
+  .how-mechanics dd {
+    font-size: 6px;
+  }
 }
 
 @media (max-width: 639px) {

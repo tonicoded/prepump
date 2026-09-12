@@ -2,6 +2,7 @@ import { Wordmark } from "./Wordmark";
 import { LINKS } from "@/lib/links";
 
 const FOOTER_LINKS = [
+  { label: "How", href: "/how-it-works" },
   { label: "Docs", href: LINKS.docs },
   { label: "X", href: LINKS.x },
   { label: "Telegram", href: LINKS.telegram },
@@ -30,7 +31,7 @@ export function Footer() {
             <a
               key={l.label}
               href={l.href}
-              className="text-[11.5px] font-bold text-white/60 transition-colors hover:text-pump-300"
+              className={`${l.label === "Docs" ? "hidden sm:inline" : ""} text-[11.5px] font-bold text-white/60 transition-colors hover:text-pump-300`}
             >
               {l.label}
             </a>

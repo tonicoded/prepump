@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { WalletButton } from "@/components/wallet/WalletButton";
 import { Wordmark } from "./Wordmark";
 
@@ -6,6 +7,9 @@ export function Navbar() {
     <header className="meme-navbar relative z-30 shrink-0">
       <nav className="mx-auto flex h-[clamp(4rem,8vh,5rem)] w-full max-w-[112rem] items-center justify-between gap-4 px-[clamp(1rem,3vw,2.5rem)]">
         <Wordmark />
+        <Link href="/how-it-works" className="meme-nav-link hidden sm:inline-flex">
+          How it works
+        </Link>
         <WalletButton compact />
       </nav>
       <div className="meme-marquee" aria-hidden>
