@@ -1,26 +1,287 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ */
+/*  PREPUMP design tokens                                              */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink-950: #060709;
+  --color-ink-900: #0a0c0f;
+  --color-ink-850: #0e1014;
+  --color-ink-800: #121519;
+  --color-ink-700: #191d23;
+  --color-ink-600: #23282f;
+
+  --color-chalk: #f2f3ef;
+  --color-chalk-dim: #c9cbc6;
+  --color-mute: #868c95;
+  --color-faint: #565c65;
+  --color-ghost: #383d45;
+
+  /* Brand greens sampled from the PREPUMP logo */
+  --color-pump-200: #d8fce3;
+  --color-pump-300: #7bf0a8;
+  --color-pump-400: #2fe28b;
+  --color-pump-500: #00d078;
+  --color-pump-600: #05a862;
+
+  --color-danger: #ff6f63;
+  --color-warn: #ffc46b;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --line: color-mix(in oklab, var(--color-chalk) 8%, transparent);
+  --line-soft: color-mix(in oklab, var(--color-chalk) 5%, transparent);
+  --line-strong: color-mix(in oklab, var(--color-chalk) 14%, transparent);
+  --panel: color-mix(in oklab, var(--color-ink-800) 82%, transparent);
+  --brand-gradient: linear-gradient(100deg, #8ef77e 0%, #15d97f 55%, #00c974 100%);
+
+  /* viewport-aware rhythm: everything shrinks on short screens */
+  --gap: clamp(0.5rem, 1.1vh, 1rem);
+  --pad: clamp(0.75rem, 1.6vh, 1.375rem);
+
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+  background: var(--color-ink-950);
+  color: var(--color-chalk);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-pump-400);
+  color: var(--color-ink-950);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-pump-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Thin, unobtrusive scrollbars for the few internal scroll regions */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 99px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Primitives                                                         */
+/* ------------------------------------------------------------------ */
+
+@utility panel {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-chalk) 3%, transparent),
+      transparent 42%
+    ),
+    var(--panel);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-chalk) 4%, transparent) inset,
+    0 18px 40px -28px rgb(0 0 0 / 0.9);
+}
+
+@utility hairline {
+  border: 1px solid var(--line);
+}
+
+@utility label-xs {
+  font-family: var(--font-mono);
+  font-size: clamp(0.5rem, 0.95vh, 0.625rem);
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Texture + ambience                                                 */
+/* ------------------------------------------------------------------ */
+
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.vignette {
+  background:
+    radial-gradient(
+      120% 80% at 50% 0%,
+      color-mix(in oklab, var(--color-chalk) 4%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(100% 60% at 50% 110%, rgb(0 0 0 / 0.7), transparent 70%);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Motion                                                             */
+/* ------------------------------------------------------------------ */
+
+@keyframes pp-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pp-tick {
+  0% {
+    opacity: 0.55;
+    transform: translate3d(0, -0.06em, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pp-scan {
+  0% {
+    transform: translate3d(0, -120%, 0);
+  }
+  100% {
+    transform: translate3d(0, 520%, 0);
+  }
+}
+
+@keyframes pp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-pump-400) 45%, transparent);
+  }
+  70% {
+    opacity: 0.75;
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+@keyframes pp-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -1.2%, 0);
+  }
+}
+
+@keyframes pp-shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+@keyframes pp-headline-rotate {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.16em, 0);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.anim-fade-up {
+  animation: pp-fade-up 0.7s var(--ease-out-quint) both;
+}
+.anim-fade {
+  animation: pp-fade 0.6s var(--ease-out-quint) both;
+}
+.anim-tick {
+  animation: pp-tick 0.45s var(--ease-out-quint);
+}
+.anim-pulse {
+  animation: pp-pulse 2.4s ease-out infinite;
+}
+.anim-drift {
+  animation: pp-drift 14s ease-in-out infinite;
+}
+.headline-rotate {
+  animation: pp-headline-rotate 0.65s var(--ease-out-quint) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes pp-sweep {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(300%, 0, 0);
+  }
 }
