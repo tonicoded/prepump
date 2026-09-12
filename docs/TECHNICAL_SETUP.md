@@ -232,6 +232,14 @@ the raw file. Tokens launched through pump.fun's own site carry the same
 `ipfs.io` URLs, so nothing is broken — but if you want both the metadata and
 the image on a gateway that serves them straight, use Pinata.
 
+**The browser never calls Solana directly.** `api.mainnet-beta.solana.com`
+answers browser origins with `403 Access forbidden`, and a paid endpoint in
+`NEXT_PUBLIC_SOLANA_RPC` would put its key in the client bundle. So the page
+posts to `/api/rpc` on your own domain, which forwards to `SOLANA_RPC_URL`
+server side and only allows the handful of read methods the interface needs.
+Point `NEXT_PUBLIC_SOLANA_RPC` at a browser-capable endpoint to skip the hop;
+set to a public Solana endpoint it is ignored, because that cannot work.
+
 **Rate limits.** Scanning uses batched RPC calls with exponential backoff, so
 the public endpoint works, just slowly. A paid RPC in `SOLANA_RPC_URL` turns a
 several-minute scan into seconds. Worth it for a launch.

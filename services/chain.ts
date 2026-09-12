@@ -20,8 +20,10 @@ export interface PrepumpClient {
   ): Promise<string>;
 }
 
-export const RPC_ENDPOINT =
-  process.env.NEXT_PUBLIC_SOLANA_RPC ?? "https://api.mainnet-beta.solana.com";
+import { BROWSER_RPC } from "@/lib/round/rpc";
+
+/** Same-origin proxy unless a browser-capable endpoint is configured. */
+export const RPC_ENDPOINT = BROWSER_RPC;
 
 class ProgramNotDeployedError extends Error {
   constructor() {

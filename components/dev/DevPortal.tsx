@@ -19,6 +19,7 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { BROWSER_RPC, waitForConfirmation } from "@/lib/round/rpc";
 import { useWallet } from "@/providers/WalletProvider";
 import { shortAddress } from "@/lib/format";
 
@@ -173,11 +174,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     setError(null);
     setDepositing("Confirm in your wallet…");
     try {
-      const connection = new Connection(
-        process.env.NEXT_PUBLIC_SOLANA_RPC ??
-          "https://api.mainnet-beta.solana.com",
-        "confirmed",
-      );
+      const connection = new Connection(BROWSER_RPC, "confirmed");
       const from = new PublicKey(address);
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash("confirmed");
@@ -196,10 +193,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
 
       const signature = await sendTransaction(transaction);
       setDepositing("Confirming…");
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed",
-      );
+      await waitForConfirmation(connection, signature);
 
       setState((current) => ({
         ...current,
