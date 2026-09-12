@@ -624,6 +624,539 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Private dev lab — same skin as the launch page, one screen         */
+/* ------------------------------------------------------------------ */
+
+.dev-stage {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: min(44rem, 100%);
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.5rem, 1.4vh, 0.9rem);
+}
+
+.dev-machine {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: clamp(0.55rem, 1.4vh, 0.9rem);
+  border: 3px solid #fffdf0;
+  border-radius: 12px;
+  background: #080a09;
+  padding: clamp(0.9rem, 2.2vh, 1.5rem) clamp(0.9rem, 2.6vw, 1.75rem);
+  box-shadow: 7px 7px 0 rgb(255 253 240 / 0.96);
+  color: #fffdf0;
+}
+
+.dev-machine::before {
+  content: attr(data-tab);
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  transform: rotate(-1.5deg);
+  border: 2px solid #080a09;
+  background: #ffed58;
+  padding: 0.18rem 0.45rem;
+  box-shadow: 2px 2px 0 #fffdf0;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.dev-chip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dev-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  color: rgb(255 255 255 / 0.62);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dev-chip-live {
+  border-color: #ff6f63;
+  color: #ff8f85;
+}
+
+.dev-chip-good {
+  border-color: rgb(123 240 168 / 0.45);
+  color: var(--color-pump-300);
+}
+
+/* ---- mystery / reveal ---------------------------------------------- */
+
+.dev-reveal {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2.4vw, 1.25rem);
+  text-align: left;
+}
+
+.dev-art {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(5rem, 15vh, 8.5rem);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid #fffdf0;
+  border-radius: 10px;
+  background: #11150f;
+}
+
+.dev-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(15px) saturate(1.25) brightness(0.92) contrast(1.05);
+  transform: scale(1.2);
+  transition:
+    filter 700ms var(--ease-out-quint),
+    transform 700ms var(--ease-out-quint);
+}
+
+.dev-art.revealed img {
+  filter: none;
+  transform: none;
+}
+
+.dev-art-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1.5rem, 5vh, 2.5rem);
+  font-weight: 900;
+  color: rgb(255 253 240 / 0.75);
+  text-shadow: 2px 2px 0 #080a09;
+  transition: opacity 400ms ease;
+}
+
+.dev-art.revealed .dev-art-mark {
+  opacity: 0;
+}
+
+.dev-art-scan {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 30%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgb(123 240 168 / 0.28),
+    transparent
+  );
+  animation: pp-scan 4.5s linear infinite;
+}
+
+.dev-art.revealed .dev-art-scan {
+  display: none;
+}
+
+.dev-ticker {
+  font-size: clamp(1.35rem, 4.6vh, 2.35rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fffdf0;
+  filter: blur(5px);
+  transition: filter 700ms var(--ease-out-quint);
+}
+
+.dev-reveal.revealed .dev-ticker {
+  filter: none;
+  color: var(--color-pump-300);
+}
+
+.dev-name {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.5vh, 11px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.dev-tagline {
+  margin-top: 0.45rem;
+  font-size: clamp(10px, 1.6vh, 12.5px);
+  font-weight: 650;
+  line-height: 1.35;
+  color: rgb(255 255 255 / 0.72);
+}
+
+/* ---- buy panel ------------------------------------------------------ */
+
+.dev-buy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid rgb(255 255 255 / 0.22);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.05);
+  padding: 0.45rem 0.5rem 0.45rem 0.85rem;
+}
+
+.dev-buy input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #fffdf0;
+  font-size: clamp(1rem, 2.6vh, 1.4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.dev-buy input::placeholder {
+  color: rgb(255 255 255 / 0.28);
+}
+
+.dev-buy input:disabled {
+  opacity: 0.45;
+}
+
+.dev-buy-unit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.dev-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.dev-presets button {
+  border: 2px solid rgb(255 255 255 / 0.2);
+  border-radius: 8px;
+  padding: 0.4rem 0;
+  color: rgb(255 255 255 / 0.75);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  transition: all 140ms ease;
+}
+
+.dev-presets button:hover:not(:disabled) {
+  border-color: var(--color-pump-300);
+  color: #fffdf0;
+}
+
+.dev-presets button[aria-pressed="true"] {
+  border-color: var(--color-pump-300);
+  background: rgb(123 240 168 / 0.14);
+  color: var(--color-pump-300);
+}
+
+.dev-presets button:disabled {
+  opacity: 0.35;
+}
+
+/* ---- actions -------------------------------------------------------- */
+
+.dev-action {
+  display: block;
+  width: 100%;
+  transform: rotate(-0.6deg);
+  border: 3px solid #080a09;
+  border-radius: 10px;
+  background: var(--color-pump-400);
+  padding: clamp(0.6rem, 1.8vh, 0.95rem) 1rem;
+  box-shadow: 4px 4px 0 #fffdf0;
+  color: #080a09;
+  font-size: clamp(0.8rem, 2vh, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.dev-action:hover:not(:disabled) {
+  transform: rotate(0.4deg) translateY(-1px);
+  box-shadow: 6px 6px 0 #fffdf0;
+}
+
+.dev-action:disabled {
+  opacity: 0.45;
+  box-shadow: 3px 3px 0 rgb(255 253 240 / 0.5);
+}
+
+.dev-action-quiet {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.32);
+  box-shadow: none;
+  transform: none;
+  color: rgb(255 255 255 / 0.8);
+  font-size: clamp(0.7rem, 1.7vh, 0.82rem);
+}
+
+.dev-action-quiet:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: #fffdf0;
+  color: #fffdf0;
+}
+
+.dev-art-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: linear-gradient(140deg, #1b2a20, #0d1410);
+  color: var(--color-pump-300);
+  font-size: clamp(1.4rem, 4.5vh, 2.2rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.dev-action-danger {
+  background: #ff6f63;
+  color: #14100f;
+}
+
+.dev-action-ghost {
+  background: transparent;
+  border-width: 2px;
+  border-color: rgb(255 255 255 / 0.32);
+  border-radius: 10px;
+  box-shadow: none;
+  color: rgb(255 255 255 / 0.72);
+  transform: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: clamp(0.6rem, 1.8vh, 0.95rem) 0.9rem;
+}
+
+.dev-action-ghost:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: #fffdf0;
+  color: #fffdf0;
+}
+
+.dev-op-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ---- readouts ------------------------------------------------------- */
+
+.dev-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid rgb(255 255 255 / 0.14);
+  padding-top: clamp(0.4rem, 1.2vh, 0.7rem);
+}
+
+.dev-readout div {
+  min-width: 0;
+}
+
+.dev-readout span {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.42);
+}
+
+.dev-readout strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: clamp(11px, 1.8vh, 14px);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: #fffdf0;
+}
+
+.dev-readout strong.accent {
+  color: var(--color-pump-300);
+}
+
+.dev-note {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.38);
+}
+
+.dev-error {
+  border: 2px solid #ff6f63;
+  border-radius: 8px;
+  background: rgb(255 111 99 / 0.12);
+  padding: 0.45rem 0.6rem;
+  color: #ff9d94;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dev-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.55);
+}
+
+.dev-toggle input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  accent-color: var(--color-pump-400);
+}
+
+.dev-warn {
+  border: 2px solid #ffc46b;
+  border-radius: 8px;
+  background: rgb(255 196 107 / 0.1);
+  padding: 0.45rem 0.6rem;
+  color: #ffd79a;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dev-link {
+  color: var(--color-pump-300);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dev-confirm {
+  width: 100%;
+  border: 2px solid #ff6f63;
+  border-radius: 8px;
+  background: rgb(255 111 99 / 0.08);
+  padding: 0.5rem 0.65rem;
+  color: #fffdf0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.dev-confirm::placeholder {
+  color: rgb(255 255 255 / 0.3);
+  letter-spacing: 0.1em;
+}
+
+.dev-theme {
+  width: 100%;
+  border: 2px solid rgb(255 255 255 / 0.18);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.45rem 0.6rem;
+  color: #fffdf0;
+  font-size: 11.5px;
+  font-weight: 600;
+  outline: none;
+}
+
+.dev-theme::placeholder {
+  color: rgb(255 255 255 / 0.3);
+}
+
+@media (max-width: 640px) {
+  .dev-machine {
+    box-shadow: 5px 5px 0 rgb(255 253 240 / 0.96);
+  }
+
+  .dev-reveal {
+    gap: 0.75rem;
+  }
+
+  .dev-art {
+    width: clamp(4.25rem, 22vw, 6rem);
+  }
+}
+
+/* Short viewports: keep the machine on one screen by dropping the
+   secondary readouts rather than letting the card clip. */
+@media (max-height: 780px) {
+  .dev-machine {
+    gap: 0.5rem;
+    padding: 0.85rem 0.9rem;
+  }
+
+  .dev-tagline {
+    display: none;
+  }
+
+  .dev-art {
+    width: clamp(3.5rem, 18vw, 5rem);
+  }
+
+  .dev-readout div:nth-child(n + 5) {
+    display: none;
+  }
+
+  .dev-note-extra {
+    display: none;
+  }
+}
+
+@media (max-height: 620px) {
+  .dev-readout div:nth-child(n + 4) {
+    display: none;
+  }
+
+  .dev-presets {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  How it works                                                       */
 /* ------------------------------------------------------------------ */
 
