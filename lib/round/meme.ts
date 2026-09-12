@@ -32,7 +32,9 @@ const imageBriefSchema = z.object({
 });
 
 const imageReviewSchema = z.object({
-  passes: z.boolean(),
+  identityAnchorVisible: z.boolean(),
+  coreJokeReadable: z.boolean(),
+  blockingIssue: z.boolean(),
   reason: z.string().min(5).max(240),
   correction: z.string().min(5).max(400),
 });
@@ -268,17 +270,23 @@ async function reviewArtwork(
     model,
     store: false,
     instructions: [
-      "You are an unforgiving meme art director checking semantic consistency,",
-      "not general image beauty. Pass only when the final image clearly features",
-      "the exact named character or object, visibly expresses the tagline and lore,",
-      "and makes the basic joke understandable without a caption. A supporting cat,",
-      "animal or prop is welcome, but it may never replace the named subject. Fail",
+      "You are a practical meme art director checking only blocking semantic",
+      "problems, not literal prompt compliance or general image beauty. Set",
+      "identityAnchorVisible true when the named character/object is clearly present",
+      "and important in the scene. It does not need to attract more emotional focus",
+      "than a supporting character. Set coreJokeReadable true when the broad visual",
+      "premise matches the name and lore. A supporting cat, animal or prop is welcome,",
+      "but it may never replace the named subject. Treat these as blocking failures:",
+      "the identity anchor is absent, the image depicts a different main premise, or",
+      "severe visual errors make the coin icon unusable. Fail generic substitutions:",
       "generic visual associations: paper is not a printer, fries are not a fast-food",
-      "worker, and a chart is not a stock character. Also fail unreadable clutter,",
-      "prominent text, logos, severe anatomy mistakes or a generic AI mascot look.",
-      "When failing, correction must be a concise, physically visible instruction",
-      "that preserves what works while putting the missing named subject front and",
-      "center. When passing, correction should simply say 'No correction needed.'",
+      "worker, and a chart is not a stock character. Do NOT mark minor deviations as",
+      "blocking: exact clock times, counts, room type, background props, color nuances",
+      "or patio versus indoor location do not matter when the identity and broad joke",
+      "work. Prominent accidental text/logos or major anatomy failures may be blocking;",
+      "tiny imperfect details are not. Set blockingIssue true only for those genuine",
+      "launch-stopping problems. When blocking, correction must be one concise visible",
+      "fix preserving what works. Otherwise say 'No correction needed.'",
     ].join(" "),
     input: [
       {
@@ -404,7 +412,9 @@ export async function generateMeme(
         "specific prop. Include a mundane setting that logically fits and deepens the",
         "joke. The scene must read at tiny coin-icon size, so use one main subject and",
         "at most one supporting character. Describe only visible content in one or two",
-        "sentences. No text, captions, logos, style, camera or lighting terminology.",
+        "sentences. Never make exact written words, clock times, precise counts or tiny",
+        "background details essential to the joke; image models reproduce those",
+        "unreliably. No text, captions, logos, style, camera or lighting terminology.",
       ].join(" "),
       input: JSON.stringify({ mode, ...concept }),
       text: { format: zodTextFormat(imageBriefSchema, "meme_image_brief") },
@@ -443,11 +453,15 @@ export async function generateMeme(
 
     let encoded = await generateArtwork();
     let review = await reviewArtwork(client, config.openAiModel, meme, encoded);
-    if (!review.passes) {
+    const needsRetry = () =>
+      !review.identityAnchorVisible ||
+      !review.coreJokeReadable ||
+      review.blockingIssue;
+    if (needsRetry()) {
       encoded = await generateArtwork(review.correction);
       review = await reviewArtwork(client, config.openAiModel, meme, encoded);
     }
-    if (!review.passes) {
+    if (needsRetry()) {
       throw new Error(`Artwork rejected after retry: ${review.reason}`);
     }
 
