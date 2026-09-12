@@ -28,7 +28,8 @@ secret — that prefix compiles the value into the browser bundle.
 | `DEV_PORTAL_ACCESS_TOKEN` | `/dev` in production | Required once deployed. Paste it into the token field at the bottom of `/dev`. |
 | `PREPUMP_EXECUTION_MODE` | launching | `simulate` (default) or `live`. |
 | `SOLANA_RPC_URL` | live launch | Must be **mainnet** — pump.fun does not exist on devnet. Use Helius/QuickNode/Triton; the public endpoint is rate limited. |
-| `LAUNCH_WALLET_SECRET_KEY` | live launch | Base58 secret key (Phantom → export private key) or a `[1,2,3,…]` byte array. |
+| `LAUNCH_WALLET_SECRET_KEY` | launching | Base58 secret key (Phantom → export private key) or a `[1,2,3,…]` byte array. Keep it on your laptop; a deployment does not need it. |
+| `NEXT_PUBLIC_DEPOSIT_ADDRESS` | deployed `/dev` | The launch wallet's public address. Lets a deployed site take deposits and show the balance without holding the key. |
 | `PINATA_JWT` | optional | Leave empty and uploads go through pump.fun's own IPFS endpoint, no account needed. Set it to own the pin and the gateway instead. |
 | `PUMPFUN_DEV_BUY_SOL` | live launch | SOL bought in the same transaction as the create. Default `0.01`. |
 | `PUMPFUN_SLIPPAGE`, `PUMPFUN_PRIORITY_FEE` | live launch | Defaults `10` and `0.00005`. |
@@ -279,6 +280,29 @@ lib/server/env.ts                env parsing, access control
 lib/dev/tokenomics.ts            supply split and share maths
 services/server/*                thin server-only wrappers around lib/round
 ```
+
+## 5b. Deploying /dev
+
+The public pages need nothing. To reach `/dev` on your own domain, set at the
+host:
+
+```
+DEV_PORTAL_ENABLED=true
+DEV_PORTAL_ACCESS_TOKEN=<a long random string>
+NEXT_PUBLIC_DEPOSIT_ADDRESS=<the launch wallet address>
+NEXT_PUBLIC_SOLANA_RPC=<your RPC>
+SOLANA_RPC_URL=<your RPC>
+OPENAI_API_KEY=<key>          # only if you want to generate from the browser
+```
+
+**Leave `LAUNCH_WALLET_SECRET_KEY` off the host.** With only the public address
+set, a deployed `/dev` can take deposits and show balances, while creating the
+token stays on your laptop where the key lives. Nothing on the server can move
+the wallet's funds.
+
+Without `DEV_PORTAL_ACCESS_TOKEN` the API routes answer 503 in production. Paste
+the token into the field at the bottom of `/dev` once; it is kept for that tab
+only.
 
 ## 6. Security notes
 

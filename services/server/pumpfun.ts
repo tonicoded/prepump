@@ -3,6 +3,7 @@ import "server-only";
 import { readRoundConfig } from "@/lib/round/config";
 import {
   createPumpToken as createToken,
+  getBalanceForAddress,
   getWalletBalance,
   LaunchError,
   parseWallet,
@@ -18,8 +19,11 @@ export function parseLaunchWallet(secret: string | undefined) {
   return parseWallet(secret);
 }
 
-export async function getLaunchWalletBalance() {
-  return getWalletBalance(readRoundConfig());
+export async function getLaunchWalletBalance(address?: string) {
+  const config = readRoundConfig();
+  return address
+    ? getBalanceForAddress(config, address)
+    : getWalletBalance(config);
 }
 
 export async function createPumpToken(env: ServerEnv, draft: TokenDraft) {

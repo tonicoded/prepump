@@ -11,9 +11,10 @@ export async function GET(request: Request) {
     const config = getPublicDevConfig();
 
     let wallet: LaunchWalletStatus = { address: null, balanceSol: null };
-    if (env.launchWalletSecret) {
+    if (env.launchWalletSecret || env.depositAddress) {
       try {
-        wallet = await getLaunchWalletBalance();
+        // A deployment can publish the deposit address without the key.
+        wallet = await getLaunchWalletBalance(env.depositAddress);
       } catch (error) {
         wallet = {
           address: null,

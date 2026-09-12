@@ -33,6 +33,8 @@ export function getServerEnv() {
 
     rpcUrl,
     launchWalletSecret: clean(process.env.LAUNCH_WALLET_SECRET_KEY),
+    /** Lets a deployment show the deposit address without holding the key. */
+    depositAddress: clean(process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS),
 
     pinataJwt: clean(process.env.PINATA_JWT),
     pinataGateway:
@@ -71,7 +73,7 @@ export function getPublicDevConfig(): DevConfigStatus {
     rpcHost: safeHost(env.rpcUrl),
     accessTokenConfigured: Boolean(env.accessToken),
     openAiConfigured: Boolean(env.openAiApiKey),
-    launchWalletConfigured: Boolean(env.launchWalletSecret),
+    launchWalletConfigured: Boolean(env.launchWalletSecret || env.depositAddress),
     ipfsProvider: env.pinataJwt ? ("pinata" as const) : ("pump.fun" as const),
     devBuySol: env.devBuySol,
   };

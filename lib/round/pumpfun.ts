@@ -1,7 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import bs58 from "bs58";
-import { Connection, Keypair, VersionedTransaction } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import type { RoundConfig } from "./config.ts";
 
 /**
@@ -205,11 +210,18 @@ export async function confirmSignature(
   );
 }
 
+export async function getBalanceForAddress(
+  config: RoundConfig,
+  address: string,
+) {
+  const connection = new Connection(config.rpcUrl, "confirmed");
+  const lamports = await connection.getBalance(new PublicKey(address));
+  return { address, balanceSol: lamports / 1e9 };
+}
+
 export async function getWalletBalance(config: RoundConfig) {
   const wallet = parseWallet(config.walletSecret);
-  const connection = new Connection(config.rpcUrl, "confirmed");
-  const lamports = await connection.getBalance(wallet.publicKey);
-  return { address: wallet.publicKey.toBase58(), balanceSol: lamports / 1e9 };
+  return getBalanceForAddress(config, wallet.publicKey.toBase58());
 }
 
 export async function createPumpToken(
