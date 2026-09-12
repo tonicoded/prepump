@@ -23,6 +23,7 @@ export type DevConfigStatus = {
   executionMode: "simulate" | "live";
   rpcHost: string;
   accessTokenConfigured: boolean;
+  roundId: number;
   openAiConfigured: boolean;
   launchWalletConfigured: boolean;
   ipfsProvider: "pinata" | "pump.fun";

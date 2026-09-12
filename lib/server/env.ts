@@ -72,6 +72,8 @@ export function getPublicDevConfig(): DevConfigStatus {
     executionMode: env.executionMode,
     rpcHost: safeHost(env.rpcUrl),
     accessTokenConfigured: Boolean(env.accessToken),
+    /** The browser resets its local round when this changes. */
+    roundId: Math.max(1, Math.trunc(Number(process.env.ROUND_ID) || 1)),
     openAiConfigured: Boolean(env.openAiApiKey),
     launchWalletConfigured: Boolean(env.launchWalletSecret || env.depositAddress),
     ipfsProvider: env.pinataJwt ? ("pinata" as const) : ("pump.fun" as const),
@@ -109,14 +111,9 @@ export function assertDevAccess(request: Request) {
     throw new DevAccessError("Dev portal is disabled.", 404);
   }
 
-  // Local development stays frictionless unless a token was explicitly set.
-  if (!env.accessToken && process.env.NODE_ENV !== "production") return env;
-  if (!env.accessToken) {
-    throw new DevAccessError(
-      "DEV_PORTAL_ACCESS_TOKEN is required in production.",
-      503,
-    );
-  }
+  // No token configured means no token required; DEV_PORTAL_ENABLED is what
+  // decides whether the portal exists at all.
+  if (!env.accessToken) return env;
 
   const bearer = request.headers
     .get("authorization")

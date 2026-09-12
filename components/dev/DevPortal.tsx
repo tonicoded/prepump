@@ -38,6 +38,11 @@ type RoundState = {
   lastDeposit?: string;
 };
 
+const initialState = (roundId: number): RoundState => ({
+  ...INITIAL,
+  roundId,
+});
+
 const INITIAL: RoundState = {
   phase: "UPCOMING",
   roundId: 1,
@@ -97,14 +102,16 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      if (saved) setState(saved);
+      // A round that the operator has already moved past must not linger.
+      if (saved && saved.roundId === config.roundId) setState(saved);
+      else setState(initialState(config.roundId));
       setAccessToken(token);
       setHydrated(true);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [config.roundId]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -280,7 +287,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
   };
 
   const reset = () => {
-    setState({ ...INITIAL, roundId: state.roundId + 1 });
+    setState(initialState(state.roundId + 1));
     setTheme("");
     setConfirmation("");
     setError(null);
@@ -382,6 +389,7 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
                     onChange={(event) =>
                       setAmount(
                         event.target.value
+                          .replace(/,/g, ".")
                           .replace(/[^0-9.]/g, "")
                           .replace(/(\..*)\./g, "$1"),
                       )

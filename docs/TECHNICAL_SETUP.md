@@ -25,7 +25,7 @@ secret — that prefix compiles the value into the browser bundle.
 | Variable | Needed for | Notes |
 | --- | --- | --- |
 | `DEV_PORTAL_ENABLED` | `/dev` in production | `/dev` always works in `npm run dev`. In production it 404s unless this is `true`. |
-| `DEV_PORTAL_ACCESS_TOKEN` | `/dev` in production | Required once deployed. Paste it into the token field at the bottom of `/dev`. |
+| `DEV_PORTAL_ACCESS_TOKEN` | optional | Set it and every `/api/dev/*` call must carry it; leave it empty and none is asked for. `DEV_PORTAL_ENABLED` is what decides whether `/dev` exists. |
 | `PREPUMP_EXECUTION_MODE` | launching | `simulate` (default) or `live`. |
 | `SOLANA_RPC_URL` | live launch | Must be **mainnet** — pump.fun does not exist on devnet. Use Helius/QuickNode/Triton; the public endpoint is rate limited. |
 | `LAUNCH_WALLET_SECRET_KEY` | launching | Base58 secret key (Phantom → export private key) or a `[1,2,3,…]` byte array. Keep it on your laptop; a deployment does not need it. |
@@ -313,7 +313,6 @@ host:
 
 ```
 DEV_PORTAL_ENABLED=true
-DEV_PORTAL_ACCESS_TOKEN=<a long random string>
 NEXT_PUBLIC_DEPOSIT_ADDRESS=<the launch wallet address>
 NEXT_PUBLIC_SOLANA_RPC=<your RPC>
 SOLANA_RPC_URL=<your RPC>
@@ -325,9 +324,10 @@ set, a deployed `/dev` can take deposits and show balances, while creating the
 token stays on your laptop where the key lives. Nothing on the server can move
 the wallet's funds.
 
-Without `DEV_PORTAL_ACCESS_TOKEN` the API routes answer 503 in production. Paste
-the token into the field at the bottom of `/dev` once; it is kept for that tab
-only.
+`DEV_PORTAL_ACCESS_TOKEN` is optional. Leave it empty and `/dev` is reachable by
+anyone who knows the path, which on a domain only you use is a fair trade. Set
+it and a field appears at the bottom of `/dev`; paste it once and it is kept for
+that tab.
 
 ## 6. Security notes
 
