@@ -10,6 +10,7 @@ import {
   createTransferCheckedInstruction,
   getAccount,
   getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import type { Deposit, Payout } from "./store.ts";
 
@@ -38,13 +39,27 @@ export function allocate(
     .filter((allocation) => allocation.tokens > 0n);
 }
 
+/**
+ * pump.fun mints with Token-2022, other launchpads with the classic program.
+ * Every account and instruction below has to use whichever owns the mint.
+ */
+export async function resolveTokenProgram(
+  connection: Connection,
+  mint: PublicKey,
+): Promise<PublicKey> {
+  const info = await connection.getAccountInfo(mint);
+  if (!info) throw new Error(`Mint ${mint.toBase58()} not found.`);
+  return info.owner;
+}
+
 export async function readTokenBalance(
   connection: Connection,
   owner: PublicKey,
   mint: PublicKey,
+  programId: PublicKey = TOKEN_PROGRAM_ID,
 ) {
-  const ata = await getAssociatedTokenAddress(mint, owner);
-  const account = await getAccount(connection, ata);
+  const ata = await getAssociatedTokenAddress(mint, owner, false, programId);
+  const account = await getAccount(connection, ata, "confirmed", programId);
   return { ata, amount: account.amount };
 }
 
@@ -58,9 +73,15 @@ export async function sendPayouts(
   mint: PublicKey,
   decimals: number,
   payouts: Payout[],
+  programId: PublicKey = TOKEN_PROGRAM_ID,
   onBatch?: (done: number, total: number) => void,
 ): Promise<Payout[]> {
-  const source = await getAssociatedTokenAddress(mint, wallet.publicKey);
+  const source = await getAssociatedTokenAddress(
+    mint,
+    wallet.publicKey,
+    false,
+    programId,
+  );
   const pending = payouts.filter((payout) => !payout.signature);
   const results = [...payouts];
 
@@ -70,7 +91,12 @@ export async function sendPayouts(
 
     for (const payout of batch) {
       const owner = new PublicKey(payout.wallet);
-      const destination = await getAssociatedTokenAddress(mint, owner);
+      const destination = await getAssociatedTokenAddress(
+        mint,
+        owner,
+        false,
+        programId,
+      );
 
       const exists = await connection.getAccountInfo(destination);
       if (!exists) {
@@ -80,6 +106,7 @@ export async function sendPayouts(
             destination,
             owner,
             mint,
+            programId,
           ),
         );
       }
@@ -92,6 +119,8 @@ export async function sendPayouts(
           wallet.publicKey,
           BigInt(payout.tokens),
           decimals,
+          [],
+          programId,
         ),
       );
     }

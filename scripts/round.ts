@@ -22,7 +22,12 @@ import {
 import { scanDeposits } from "../lib/round/deposits.ts";
 import { generateMeme } from "../lib/round/meme.ts";
 import { createPumpToken, parseWallet } from "../lib/round/pumpfun.ts";
-import { allocate, readTokenBalance, sendPayouts } from "../lib/round/distribute.ts";
+import {
+  allocate,
+  readTokenBalance,
+  resolveTokenProgram,
+  sendPayouts,
+} from "../lib/round/distribute.ts";
 
 try {
   process.loadEnvFile(".env.local");
@@ -66,7 +71,7 @@ const stamp = (ms: number) =>
 
 
 function die(message: string): never {
-  console.error(`\n${C.red("✖")} ${message}\n`);
+  console.error(`\n${C.red("✖")} ${message || "Unknown error"}\n`);
   process.exit(1);
 }
 
@@ -169,6 +174,15 @@ async function scan() {
     console.log(
       `  ${short(deposit.wallet).padEnd(14)}${sol(deposit.lamports).padStart(10)}${`${share.toFixed(2)}%`.padStart(10)}`,
     );
+    // Several transfers from one wallet is normal, but it is also how an
+    // operator top-up gets mistaken for a deposit. Show the split.
+    if (deposit.signatures.length > 1) {
+      console.log(
+        C.yellow(
+          `  ${"".padEnd(14)}${C.dim(`${deposit.signatures.length} separate transfers — check none of them is your own funding`)}`,
+        ),
+      );
+    }
   }
   console.log(`\n  ${C.bold(`${result.deposits.length} wallets · ${sol(result.totalLamports)} SOL`)}`);
   if (result.unattributedLamports > 0) {
@@ -201,14 +215,26 @@ async function launch() {
   const pooledSol = record.totalLamports / 1e9;
 
   // pump.fun's create fee and the mint/metadata rent come off the top: they
-  // are owed whatever the buy is.
-  const overhead = config.createCostSol + config.priorityFee + config.reserveSol;
-  const spendable = balance / 1e9 - overhead;
-  const forced = Number(option("buy"));
-  const target = Number.isFinite(forced) && forced >= 0 ? forced : pooledSol;
-  const buySol = Number(Math.max(0, Math.min(target, spendable)).toFixed(6));
+  // are owed whatever the buy is. Done in lamports and floored, so the buy can
+  // never round its way past what the wallet actually holds.
+  const BASE_FEE_LAMPORTS = 10_000;
+  const overheadLamports =
+    Math.ceil(
+      (config.createCostSol + config.priorityFee + config.reserveSol) * 1e9,
+    ) + BASE_FEE_LAMPORTS;
+  const overhead = overheadLamports / 1e9;
+  const spendableLamports = balance - overheadLamports;
 
-  if (spendable < 0) {
+  const forced = Number(option("buy"));
+  const targetLamports =
+    Number.isFinite(forced) && forced >= 0
+      ? Math.round(forced * 1e9)
+      : record.totalLamports;
+
+  const buyLamports = Math.max(0, Math.min(targetLamports, spendableLamports));
+  const buySol = Math.floor(buyLamports / 1000) / 1e6;
+
+  if (spendableLamports < 0) {
     die(
       `Wallet holds ${sol(balance)} SOL. A launch needs about ${overhead.toFixed(4)} SOL ` +
         `before any buy: pump.fun charges a create fee and the mint and metadata ` +
@@ -273,9 +299,15 @@ async function distribute() {
   if (!record?.launch) die("This round has not launched yet.");
 
   const mint = new PublicKey(record.launch.mint);
+  const programId = await resolveTokenProgram(connection, mint);
   const supply = await connection.getTokenSupply(mint);
   const decimals = supply.value.decimals;
-  const { amount } = await readTokenBalance(connection, wallet.publicKey, mint);
+  const { amount } = await readTokenBalance(
+    connection,
+    wallet.publicKey,
+    mint,
+    programId,
+  );
 
   const keep = (amount * BigInt(Math.round(config.devCutPercent * 100))) / 10_000n;
   const distributable = amount - keep;
@@ -321,6 +353,7 @@ async function distribute() {
     mint,
     decimals,
     payouts,
+    programId,
     (done, total) => process.stdout.write(`\r  Sending… ${done}/${total}   `),
   );
   process.stdout.write("\r".padEnd(40) + "\r");
@@ -366,5 +399,8 @@ try {
     process.exit(1);
   }
 } catch (error) {
-  die(error instanceof Error ? error.message : String(error));
+  if (error instanceof Error) {
+    die(error.message || `${error.name}${error.stack ? `\n\n${error.stack.split("\n").slice(0, 4).join("\n")}` : ""}`);
+  }
+  die(String(error));
 }
