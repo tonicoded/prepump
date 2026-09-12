@@ -32,8 +32,8 @@ const STEPS = [
 const MECHANICS = [
   ["0%", "Team allocation"],
   ["0%", "PREPUMP fee"],
-  ["100%", "Of tokens to depositors"],
-  ["AUTO", "Sent to your wallet"],
+  ["100%", "Tokens to depositors"],
+  ["DEV", "Gets pump.fun creator rewards"],
 ] as const;
 
 export function HowItWorks() {
@@ -77,11 +77,11 @@ export function HowItWorks() {
 
         <article className="how-math-card">
           <div className="how-math-copy">
-            <span className="how-mini-label">YOUR SHARE, BEFORE YOU BUY</span>
-            <h2>1 SOL ÷ 5 SOL pool = 20%</h2>
+            <span className="how-mini-label">YOUR SHARE</span>
+            <h2>1 SOL in a 5 SOL pool = 20%</h2>
             <p>
-              Your wallet receives 20% of the tokens the pool buys. pump.fun’s
-              creator rewards go to the dev.
+              That’s your cut of every token the launch buys. The pool can grow
+              until T-0, so your final % locks when the timer ends.
             </p>
           </div>
           <dl className="how-mechanics">
