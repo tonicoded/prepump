@@ -334,12 +334,12 @@ a {
   position: relative;
   width: min(31rem, 86vw);
   transform: rotate(-0.8deg);
-  border: 3px solid #fffdf0;
+  border: 3px solid #080a09;
   border-radius: 10px;
-  background: #080a09;
+  background: #fffdf0;
   padding: clamp(0.9rem, 2vh, 1.25rem) clamp(1rem, 3vw, 2rem);
-  box-shadow: 7px 7px 0 rgb(255 253 240 / 0.96);
-  color: #fffdf0;
+  box-shadow: 7px 7px 0 #080a09;
+  color: #080a09;
   animation: pp-card-idle 5.5s ease-in-out infinite;
 }
 
@@ -352,7 +352,7 @@ a {
   border: 2px solid #080a09;
   background: #ffed58;
   padding: 0.18rem 0.45rem;
-  box-shadow: 2px 2px 0 #fffdf0;
+  box-shadow: 2px 2px 0 #080a09;
   color: #080a09;
   font-family: var(--font-mono);
   font-size: 7px;
@@ -415,6 +415,27 @@ a {
 .meme-coming-card .meme-loader-status,
 .meme-coming-card .meme-loader-code {
   position: static;
+  border: 2px solid #080a09;
+  background: #fffdf0;
+  box-shadow: 2px 2px 0 #080a09;
+  color: #080a09;
+}
+
+.meme-coming-card .meme-loader-code {
+  background: var(--meme-green);
+}
+
+.meme-coming-card .meme-loader-dot {
+  border: 1.5px solid #080a09;
+  background: var(--meme-green);
+  box-shadow: none;
+}
+
+.meme-coming-mark {
+  border: 2px solid #080a09;
+  background: var(--meme-green);
+  padding: 0.15rem 0.4rem;
+  color: #080a09;
 }
 
 /* Countdown inside the coming-soon card */
@@ -428,13 +449,13 @@ a {
 .meme-countdown-digits {
   display: block;
   min-width: 2ch;
-  color: #fffdf0;
+  color: #080a09;
   font-size: clamp(2rem, min(7vh, 5.2vw), 3.6rem);
   font-weight: 900;
   letter-spacing: -0.03em;
   line-height: 0.95;
   text-align: center;
-  text-shadow: 0 0 22px rgb(123 240 168 / 0.25);
+  text-shadow: 3px 3px 0 var(--meme-green);
 }
 
 .meme-countdown-compact .meme-countdown-digits {
@@ -443,7 +464,7 @@ a {
 
 .meme-countdown-colon {
   margin: 0 clamp(0.3rem, 1.2vw, 0.7rem);
-  color: rgb(123 240 168 / 0.55);
+  color: #080a09;
   font-size: clamp(1.4rem, min(5vh, 3.8vw), 2.6rem);
   font-weight: 900;
   line-height: 1.05;
@@ -456,7 +477,7 @@ a {
 
 .meme-countdown-label {
   margin-top: 0.3rem;
-  color: rgb(255 255 255 / 0.4);
+  color: rgb(8 10 9 / 0.5);
   font-family: var(--font-mono);
   font-size: clamp(7px, 0.9vh, 9px);
   font-weight: 900;
@@ -464,18 +485,36 @@ a {
   text-transform: uppercase;
 }
 
-/* Loader in progress mode: lit blocks are time elapsed, the next one pulses */
-.meme-block-loader.is-progress span {
+/* Loader on the light card: outlined blocks that fill with green */
+.meme-coming-card .meme-block-loader span {
+  height: clamp(9px, 1.4vh, 12px);
+  border: 2px solid #080a09;
+  background: #fffdf0;
+  opacity: 1;
+  box-shadow: none;
+  animation: pp-block-fill 1.3s steps(2, end) infinite;
+}
+
+.meme-coming-card .meme-block-loader.is-progress span {
   animation: none;
 }
 
-.meme-block-loader.is-progress span.on {
-  opacity: 1;
-  box-shadow: 0 0 10px rgb(123 240 168 / 0.45);
+.meme-coming-card .meme-block-loader.is-progress span.on {
+  background: var(--meme-green);
 }
 
-.meme-block-loader.is-progress span.next {
-  animation: pp-loader-block 1.3s steps(2, end) infinite;
+.meme-coming-card .meme-block-loader.is-progress span.next {
+  animation: pp-block-fill 1.3s steps(2, end) infinite;
+}
+
+@keyframes pp-block-fill {
+  0%,
+  100% {
+    background: #fffdf0;
+  }
+  50% {
+    background: var(--meme-green);
+  }
 }
 
 .meme-extras {
@@ -1670,7 +1709,7 @@ a {
 
   .meme-coming-card {
     width: min(22rem, 90vw);
-    box-shadow: 5px 5px 0 rgb(255 253 240 / 0.96);
+    box-shadow: 5px 5px 0 #080a09;
   }
 
   .meme-loader-status {

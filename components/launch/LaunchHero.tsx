@@ -260,7 +260,7 @@ function ComingSoon({ compact }: { compact: boolean }) {
         </span>
       </div>
 
-      <p className="mt-[clamp(0.5rem,1.4vh,0.8rem)] font-mono text-[clamp(8px,1.05vh,10px)] font-black tracking-[0.2em] text-white/50 uppercase">
+      <p className="mt-[clamp(0.5rem,1.4vh,0.8rem)] font-mono text-[clamp(8px,1.05vh,10px)] font-black tracking-[0.2em] text-ink-950/55 uppercase">
         {live ? "It is launch time" : "Platform launch in"}
       </p>
 
@@ -319,12 +319,12 @@ function ComingSoon({ compact }: { compact: boolean }) {
         ))}
       </div>
 
-      <div className="mt-[clamp(0.55rem,1.5vh,0.85rem)] flex w-full items-center justify-between gap-3 font-mono text-[clamp(7px,0.95vh,9px)] font-black tracking-[0.13em] text-white/55 uppercase">
+      <div className="mt-[clamp(0.55rem,1.5vh,0.85rem)] flex w-full items-center justify-between gap-3 font-mono text-[clamp(7px,0.95vh,9px)] font-black tracking-[0.13em] text-ink-950/60 uppercase">
         <span>Generating next meme</span>
-        <span className="text-pump-300">Solana → pump.fun</span>
+        <span className="meme-coming-mark">Solana → pump.fun</span>
       </div>
 
-      <p className="mt-[clamp(0.55rem,1.4vh,0.8rem)] font-mono text-[clamp(7px,0.9vh,9px)] font-bold tracking-[0.14em] text-white/35 uppercase">
+      <p className="mt-[clamp(0.55rem,1.4vh,0.8rem)] font-mono text-[clamp(7px,0.9vh,9px)] font-bold tracking-[0.14em] text-ink-950/45 uppercase">
         {LAUNCH_UTC} UTC · {LAUNCH_NL} NL · Deposits open at launch
       </p>
     </div>
