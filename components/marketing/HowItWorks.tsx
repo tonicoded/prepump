@@ -1,39 +1,39 @@
 const STEPS = [
   {
     number: "01",
-    label: "PREBUY",
-    title: "Connect & commit",
-    body: "Connect your Solana wallet and choose how much SOL you want in the weekly round.",
-    stamp: "YOU’RE EARLY",
+    label: "DEPOSIT",
+    title: "Connect & deposit",
+    body: "Connect your Solana wallet and put SOL into the round before the timer hits zero.",
+    stamp: "FAIR LAUNCH",
   },
   {
     number: "02",
     label: "T–0",
-    title: "The contract cooks",
-    body: "At zero, deposits close. A random name, ticker and meme image are generated.",
+    title: "Nobody knows the coin",
+    body: "Deposits close. Only then does AI generate the name, ticker and meme image.",
     stamp: "NO INSIDERS",
   },
   {
     number: "03",
     label: "LAUNCH",
     title: "Born on pump.fun",
-    body: "The contract automatically launches the mystery coin on pump.fun.",
+    body: "The coin launches on pump.fun straight away, bought with the whole pool.",
     stamp: "SEND IT",
   },
   {
     number: "04",
     label: "PAYOUT",
     title: "Tokens hit your wallet",
-    body: "Your share is sent automatically. The live chart appears here right away.",
+    body: "Everyone’s tokens are sent automatically, in proportion to what they put in.",
     stamp: "NO CLAIM BUTTON",
   },
 ] as const;
 
 const MECHANICS = [
-  ["2%", "Automatic dev wallet"],
-  ["FEES", "Creator fees go to holders"],
-  ["30%", "Penalty for leaving early"],
-  ["LIVE", "Expected share shown upfront"],
+  ["0%", "Team allocation"],
+  ["0%", "PREPUMP fee"],
+  ["100%", "Of tokens to depositors"],
+  ["AUTO", "Sent to your wallet"],
 ] as const;
 
 export function HowItWorks() {
@@ -46,8 +46,8 @@ export function HowItWorks() {
           <span> ZERO INSIDERS.</span>
         </h1>
         <p>
-          Every week, committed SOL becomes a surprise pump.fun launch. Nobody
-          knows the coin before the countdown ends.
+          Every round, the deposited SOL becomes a surprise pump.fun launch.
+          Nobody knows the coin before the countdown ends.
         </p>
       </header>
 
@@ -68,10 +68,10 @@ export function HowItWorks() {
       <section className="how-bottom">
         <article className="how-why-card">
           <span className="how-mini-label">WHY PREPUMP?</span>
-          <h2>Most launches are noise.</h2>
+          <h2>Everyone enters blind.</h2>
           <p>
-            PREPUMP makes the reveal the event. Everyone enters blind. The meme,
-            name and ticker stay secret until launch.
+            No presale, no team bag, no insiders. From deposit to launch to
+            payout, it all runs automatically.
           </p>
         </article>
 
@@ -79,11 +79,14 @@ export function HowItWorks() {
           <div className="how-math-copy">
             <span className="how-mini-label">YOUR SHARE, BEFORE YOU BUY</span>
             <h2>1 SOL ÷ 5 SOL pool = 20%</h2>
-            <p>Your wallet receives 20% of the participant token allocation.</p>
+            <p>
+              Your wallet receives 20% of the tokens the pool buys. pump.fun’s
+              creator rewards go to the dev.
+            </p>
           </div>
           <dl className="how-mechanics">
             {MECHANICS.map(([value, label]) => (
-              <div key={value}>
+              <div key={label}>
                 <dt>{value}</dt>
                 <dd>{label}</dd>
               </div>

@@ -20,7 +20,7 @@ const ITEMS = [
   },
   {
     q: "How is my allocation calculated?",
-    a: "Your allocation is your proportional share of the eligible SOL committed to the round, applied to the distributable supply, subject to disclosed launch costs, the platform fee, slippage and rounding. Commit 2 SOL into a 100 SOL round and you hold 2% of the pool.",
+    a: "Your allocation is your proportional share of the eligible SOL committed to the round, applied to the distributable supply, minus pump.fun's own launch costs, slippage and rounding. PREPUMP takes no fee. Commit 2 SOL into a 100 SOL round and you hold 2% of the pool.",
   },
   {
     q: "Can I withdraw before launch?",
