@@ -210,6 +210,92 @@ export function DevPortal({ config }: { config: DevConfigStatus }) {
     return () => clearTimeout(timer);
   }, [config.launchWalletConfigured, refreshWallet, accessToken]);
 
+  /**
+   * A launch performed by `npm run round` happens outside this browser, so it
+   * cannot update React or localStorage directly. While a local deposit is still
+   * displayed, watch the chain for a later transaction signed by the launch
+   * wallet. Incoming deposits do not qualify; a signed outgoing transaction
+   * means the operator has started settling/launching and the old pool is no
+   * longer available.
+   */
+  useEffect(() => {
+    if (
+      !hydrated ||
+      !state.lastDeposit ||
+      state.totalSol <= 0 ||
+      !wallet?.address
+    ) {
+      return;
+    }
+
+    const watchedDeposit = state.lastDeposit;
+    const launchAddress = wallet.address;
+    let cancelled = false;
+    let checking = false;
+
+    const checkForExternalLaunch = async () => {
+      if (checking || cancelled) return;
+      checking = true;
+      try {
+        const connection = new Connection(browserRpcUrl(), "confirmed");
+        const publicKey = new PublicKey(launchAddress);
+        const newer = await connection.getSignaturesForAddress(publicKey, {
+          until: watchedDeposit,
+          limit: 25,
+        });
+
+        for (const entry of newer) {
+          if (entry.err) continue;
+          const transaction = await connection.getParsedTransaction(
+            entry.signature,
+            { maxSupportedTransactionVersion: 0 },
+          );
+          const signedByLaunchWallet = transaction?.transaction.message.accountKeys.some(
+            (key) => key.signer && key.pubkey.toBase58() === launchAddress,
+          );
+          if (!signedByLaunchWallet) continue;
+
+          if (!cancelled) {
+            setState((current) =>
+              current.lastDeposit === watchedDeposit
+                ? {
+                    ...current,
+                    phase: "UPCOMING",
+                    totalSol: 0,
+                    participants: 0,
+                    ownSol: 0,
+                    token: null,
+                    receipt: null,
+                    lastDeposit: undefined,
+                  }
+                : current,
+            );
+            void refreshWallet();
+          }
+          return;
+        }
+      } catch {
+        // A temporary RPC failure must not erase the pool or disturb deposits.
+        // The next poll retries automatically.
+      } finally {
+        checking = false;
+      }
+    };
+
+    void checkForExternalLaunch();
+    const timer = window.setInterval(() => void checkForExternalLaunch(), 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    hydrated,
+    refreshWallet,
+    state.lastDeposit,
+    state.totalSol,
+    wallet?.address,
+  ]);
+
   /* ------------------------------ actions ------------------------------ */
 
   const share = calculatePoolShare(state.ownSol, state.totalSol);
