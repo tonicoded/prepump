@@ -10,6 +10,9 @@
  * Run it yourself when the countdown reaches zero. Nothing here is scheduled.
  */
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import sharp from "sharp";
 import {
   Connection,
   Keypair,
@@ -915,6 +918,96 @@ async function auto() {
   console.log(C.green(`  Round ${label} is done.\n`));
 }
 
+
+/**
+ * Generates a batch of memes without launching anything, so the variety can be
+ * judged by eye. Writes each image plus a labelled contact sheet.
+ */
+async function memes() {
+  const count = Math.min(12, Math.max(1, Math.trunc(Number(option("count")) || 6)));
+  const mode = normalizeMemeMode(option("mode") ?? process.env.ROUND_MEME_MODE);
+  const theme = option("theme") ?? process.env.ROUND_THEME;
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const dir = path.join(process.cwd(), ".round", "previews", stamp);
+  mkdirSync(dir, { recursive: true });
+
+  console.log(`\n${C.bold(`Generating ${count} preview memes`)}  ${C.dim(`mode ${mode}`)}`);
+  console.log(C.dim("  Nothing is launched. This only spends OpenAI credits.\n"));
+
+  const results = await Promise.allSettled(
+    Array.from({ length: count }, () => generateMeme(config, theme, true, mode)),
+  );
+
+  const tiles: { image: Buffer; caption: string[] }[] = [];
+  results.forEach((result, index) => {
+    const n = String(index + 1).padStart(2, "0");
+    if (result.status === "rejected") {
+      console.log(C.red(`  ${n}  failed: ${String(result.reason).slice(0, 120)}`));
+      return;
+    }
+    const meme = result.value;
+    const line = `${meme.name} ($${meme.ticker})`;
+    console.log(
+      `  ${n}  ${C.bold(line)}  ${C.dim(`${meme.style ?? "?"}${meme.slogan ? ` · "${meme.slogan}"` : ""}`)}`,
+    );
+    console.log(`      ${meme.tagline}`);
+    if (meme.imageError) console.log(C.yellow(`      ${meme.imageError}`));
+    if (!meme.imageDataUrl) return;
+    const image = Buffer.from(meme.imageDataUrl.split(",")[1], "base64");
+    writeFileSync(path.join(dir, `${n}-${meme.ticker}.webp`), image);
+    tiles.push({
+      image,
+      caption: [line, `${meme.style ?? ""}${meme.slogan ? ` · ${meme.slogan}` : ""}`],
+    });
+  });
+  writeFileSync(
+    path.join(dir, "memes.json"),
+    JSON.stringify(
+      results.map((r) => (r.status === "fulfilled" ? { ...r.value, imageDataUrl: undefined } : { error: String(r.reason) })),
+      null,
+      2,
+    ),
+  );
+
+  if (tiles.length > 0) {
+    const size = 384;
+    const band = 64;
+    const cols = Math.min(3, tiles.length);
+    const rows = Math.ceil(tiles.length / cols);
+    const escape = (value: string) =>
+      value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const composites = await Promise.all(
+      tiles.flatMap((tile, i) => {
+        const left = (i % cols) * size;
+        const top = Math.floor(i / cols) * (size + band);
+        const caption = Buffer.from(
+          `<svg width="${size}" height="${band}" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#080a09"/>
+            <text x="12" y="26" font-family="Helvetica, Arial" font-size="18" font-weight="700" fill="#fffdf0">${escape(tile.caption[0]).slice(0, 38)}</text>
+            <text x="12" y="50" font-family="Menlo, monospace" font-size="13" fill="#7bf0a8">${escape(tile.caption[1]).slice(0, 44)}</text>
+          </svg>`,
+        );
+        return [
+          sharp(tile.image).resize(size, size).png().toBuffer().then((input) => ({ input, left, top })),
+          Promise.resolve({ input: caption, left, top: top + size }),
+        ];
+      }),
+    );
+    await sharp({
+      create: {
+        width: cols * size,
+        height: rows * (size + band),
+        channels: 3,
+        background: "#080a09",
+      },
+    })
+      .composite(composites)
+      .png()
+      .toFile(path.join(dir, "sheet.png"));
+    console.log(`\n  ${C.green("Contact sheet")}  ${path.join(dir, "sheet.png")}\n`);
+  }
+}
+
 /* --------------------------------- run ---------------------------------- */
 
 try {
@@ -925,6 +1018,7 @@ try {
   else if (command === "rewards") await rewards();
   else if (command === "owner") owner();
   else if (command === "auto") await auto();
+  else if (command === "memes") await memes();
   else if (command === "go") {
     await launch();
     await distribute();
@@ -932,7 +1026,7 @@ try {
     console.log(
       [
         "",
-        "Usage: npm run round <status|scan|launch|distribute|rewards|owner|auto|go> [options]",
+        "Usage: npm run round <status|scan|launch|distribute|rewards|owner|auto|go|memes> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
         "  --now         launch before ROUND_CLOSES_AT",
@@ -948,6 +1042,9 @@ try {
         "  --min-claim   minimum estimated net SOL for a bulk claim (default 0.00005)",
         "  --rewards     with `auto`, also claim creator fees after the launch",
         "  --round <id>  override automatic round selection",
+        "  --count <n>   with memes, how many previews to generate (max 12)",
+        "  --mode <id>   with memes, trend|classic|brand|stock|workplace|animal|cursed",
+        "  --theme <txt> with memes, a creative direction",
         "  --show-secret print an owner key for wallet import (sensitive)",
         "",
       ].join("\n"),

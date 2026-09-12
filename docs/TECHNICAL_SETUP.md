@@ -379,6 +379,27 @@ set to a public Solana endpoint it is ignored, because that cannot work.
 the public endpoint works, just slowly. A paid RPC in `SOLANA_RPC_URL` turns a
 several-minute scan into seconds. Worth it for a launch.
 
+## 3b-2. Previewing memes without launching
+
+```bash
+npm run round -- memes --count 9                 # 9 previews, default mode
+npm run round -- memes --mode animal --count 6   # one mode
+npm run round -- memes --theme "office goose"    # steer the batch
+```
+
+Nothing is launched; it only spends OpenAI credits. Each image lands in
+`.round/previews/<timestamp>/` with a labelled `sheet.png` contact sheet and a
+`memes.json` of names, tickers, taglines, styles and slogans.
+
+Every meme samples four things independently: a subject (animals, archetypes,
+statues, objects, food), a beat (what just happened to it), a comedy lens and a
+**visual style** — hype toy over a stock ticker, green cut-out sticker, found
+phone photo, deep-fried reaction image, fake-rich flex photo, cursed stock photo,
+bootleg action figure, office clip art, Renaissance portrait, security camera
+still, claymation, or classic forum drawing for the `classic` mode. Styles that
+suit it carry a short ALL-CAPS slogan printed on a shirt, cap, box or whiteboard
+(`STOP BEING POOR` energy). Each mode only draws from styles that fit it.
+
 ## 4. What is real and what is not
 
 | Piece | Status |

@@ -12,6 +12,10 @@ export type GeneratedMeme = {
   tagline: string;
   description: string;
   imagePrompt: string;
+  /** Visual style the artwork was rendered in. */
+  style?: string;
+  /** Short printed text on the artwork, when the joke has one. */
+  slogan?: string;
   /** data: URL produced by the image model, when one was generated. */
   imageDataUrl?: string;
   /** Set when the text came back but the artwork call failed. */
