@@ -1,32 +1,60 @@
-const LEFT = ["Mystery", "Solana", "Pump.fun", "Born at launch"];
+import Image from "next/image";
+
+const GLYPHS = ["$", "↑", "?", "+", "SOL", "↑"];
 
 export function SideMarks() {
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 hidden 2xl:block"
-    >
-      <div className="absolute top-[8%] left-0 space-y-1">
-        {LEFT.map((l) => (
-          <p key={l} className="meme-side-label">
-            {l}
-          </p>
-        ))}
+    <div aria-hidden className="meme-extras">
+      <div className="meme-burst">
+        <strong>99%</strong>
+        <span>NOISE</span>
       </div>
-      <div className="absolute top-[44%] left-0 space-y-1">
-        {["Get in", "before", "the pump."].map((l) => (
-          <p key={l} className="meme-side-label">
-            {l}
-          </p>
-        ))}
+
+      <div className="meme-chat-sticker">
+        <span>WEN LAUNCH?</span>
+        <strong>SOON™</strong>
       </div>
-      <div className="absolute top-[42%] right-0 space-y-1 text-right">
-        {["Built for", "pump.fun", "on Solana"].map((l) => (
-          <p key={l} className="meme-side-label">
-            {l}
-          </p>
+
+      <figure className="meme-character-card meme-character-cat">
+        <Image
+          src="/meme-crying-trader.png"
+          alt=""
+          width={1254}
+          height={1254}
+          sizes="(max-width: 1023px) 72px, 130px"
+        />
+        <figcaption>BOUGHT THE TOP</figcaption>
+      </figure>
+
+      <figure className="meme-character-card meme-character-skeleton">
+        <Image
+          src="/meme-waiting-skeleton.png"
+          alt=""
+          width={1254}
+          height={1254}
+          sizes="(max-width: 1023px) 72px, 130px"
+        />
+        <figcaption>STILL WAITING</figcaption>
+      </figure>
+
+      <figure className="meme-character-card meme-character-chad">
+        <Image
+          src="/meme-chad-holder.png"
+          alt=""
+          width={1254}
+          height={1254}
+          sizes="130px"
+        />
+        <figcaption>NEVER SOLD</figcaption>
+      </figure>
+
+      <span className="meme-tape meme-tape-left">NOBODY KNOWS</span>
+      <span className="meme-tape meme-tape-right">RANDOM AF</span>
+
+      <div className="meme-edge-glyphs">
+        {GLYPHS.map((glyph, index) => (
+          <span key={`${glyph}-${index}`}>{glyph}</span>
         ))}
-        <span className="ml-auto block h-px w-8 bg-[var(--line-strong)]" />
       </div>
     </div>
   );

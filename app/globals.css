@@ -186,6 +186,11 @@ a {
   box-shadow: 0 4px 0 rgb(255 255 255 / 0.96);
 }
 
+.meme-navbar button {
+  border: 2px solid #fffdf0;
+  box-shadow: 3px 3px 0 var(--color-pump-600);
+}
+
 .meme-footer {
   box-shadow: 0 -3px 0 rgb(255 255 255 / 0.96);
 }
@@ -238,6 +243,8 @@ a {
 
 .meme-art {
   filter: saturate(1.1) contrast(1.02);
+  transform-origin: center bottom;
+  animation: pp-meme-idle 7s ease-in-out infinite;
 }
 
 .meme-art-mobile {
@@ -255,6 +262,24 @@ a {
   position: relative;
   z-index: 2;
   width: min(46rem, 100%);
+}
+
+.meme-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 1%;
+  left: 50%;
+  width: min(58rem, 92vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -31%);
+  opacity: 0.12;
+  background: repeating-conic-gradient(
+    from -4deg,
+    #080a09 0deg 1.2deg,
+    transparent 1.2deg 8deg
+  );
+  mask-image: radial-gradient(circle, black 0 22%, transparent 63%);
 }
 
 .meme-round-sticker {
@@ -296,6 +321,7 @@ a {
 }
 
 .meme-coming-card {
+  position: relative;
   width: min(31rem, 86vw);
   transform: rotate(-0.8deg);
   border: 3px solid #fffdf0;
@@ -304,6 +330,24 @@ a {
   padding: clamp(0.9rem, 2vh, 1.25rem) clamp(1rem, 3vw, 2rem);
   box-shadow: 7px 7px 0 rgb(255 253 240 / 0.96);
   color: #fffdf0;
+  animation: pp-card-idle 5.5s ease-in-out infinite;
+}
+
+.meme-coming-card::before {
+  content: "MEME MACHINE // STANDBY";
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  transform: rotate(-1.5deg);
+  border: 2px solid #080a09;
+  background: #ffed58;
+  padding: 0.18rem 0.45rem;
+  box-shadow: 2px 2px 0 #fffdf0;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
 }
 
 .meme-loader-status,
@@ -357,19 +401,226 @@ a {
   animation: pp-loader-block 1.3s steps(2, end) infinite;
 }
 
-.meme-side-label {
-  width: max-content;
-  transform: rotate(-2deg);
-  border: 2px solid #080a09;
-  background: #fffdf0;
-  padding: 0.25rem 0.45rem;
-  box-shadow: 2px 2px 0 #080a09;
+.meme-extras {
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+}
+
+.meme-burst {
+  position: absolute;
+  top: 2%;
+  left: 3%;
+  display: flex;
+  width: clamp(5.5rem, 8vw, 8rem);
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  clip-path: polygon(50% 0%, 61% 22%, 82% 8%, 80% 33%, 100% 38%, 78% 53%, 94% 74%, 68% 71%, 66% 100%, 49% 77%, 29% 97%, 29% 72%, 2% 79%, 20% 56%, 0% 43%, 25% 35%, 12% 12%, 39% 24%);
+  background: #ffed58;
+  color: #080a09;
+  filter: drop-shadow(5px 6px 0 #080a09);
+  animation: pp-burst-idle 6s ease-in-out infinite;
+}
+
+.meme-burst strong {
+  font-size: clamp(1.3rem, 2.4vw, 2.25rem);
+  font-weight: 950;
+  line-height: 0.8;
+}
+
+.meme-burst span {
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.8vw, 10px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.meme-chat-sticker {
+  position: absolute;
+  top: 5%;
+  right: 3%;
+  display: flex;
+  transform: rotate(2deg);
+  border: 3px solid #080a09;
+  border-radius: 12px;
+  background: #ff5ba7;
+  padding: 0.55rem 0.75rem;
+  box-shadow: 5px 5px 0 #080a09;
+  flex-direction: column;
   color: #080a09;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: clamp(7px, 0.8vw, 10px);
   font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  animation: pp-chat-idle 5s ease-in-out infinite;
+}
+
+.meme-chat-sticker::after {
+  content: "";
+  position: absolute;
+  right: 15px;
+  bottom: -12px;
+  width: 16px;
+  height: 16px;
+  border-right: 3px solid #080a09;
+  border-bottom: 3px solid #080a09;
+  background: #ff5ba7;
+  transform: rotate(45deg);
+}
+
+.meme-chat-sticker strong {
+  margin-top: 0.2rem;
+  font-family: var(--font-sans);
+  font-size: clamp(1.1rem, 2vw, 1.8rem);
+  line-height: 0.9;
+}
+
+.meme-character-card {
+  position: absolute;
+  width: clamp(6.75rem, 8.5vw, 8.25rem);
+  overflow: hidden;
+  border: 3px solid #080a09;
+  background: var(--meme-green);
+  box-shadow: 5px 5px 0 #fffdf0, 8px 8px 0 #080a09;
+  animation: pp-character-idle 5.8s ease-in-out infinite;
+}
+
+.meme-character-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.meme-character-card figcaption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 3px solid #080a09;
+  background: #080a09;
+  padding: 0.35rem 0.25rem 0.3rem;
+  color: #fffdf0;
+  font-family: var(--font-mono);
+  font-size: clamp(6px, 0.65vw, 9px);
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.meme-character-cat {
+  --character-tilt: -6deg;
+  bottom: 1%;
+  left: 18%;
+}
+
+.meme-character-skeleton {
+  --character-tilt: 5deg;
+  right: 18%;
+  bottom: 1%;
+  animation-delay: -2.1s;
+}
+
+.meme-character-chad {
+  --character-tilt: -4deg;
+  top: 1%;
+  right: 18%;
+  animation-delay: -3.8s;
+}
+
+.meme-tape {
+  position: absolute;
+  border: 2px solid #080a09;
+  background: #fffdf0;
+  padding: 0.3rem 0.55rem;
+  box-shadow: 3px 3px 0 #080a09;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.75vw, 10px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.meme-tape-left {
+  bottom: 7%;
+  left: 2%;
+  transform: rotate(5deg);
+}
+
+.meme-tape-right {
+  right: 2%;
+  bottom: 8%;
+  transform: rotate(-5deg);
+  background: #080a09;
+  color: #fffdf0;
+}
+
+.meme-edge-glyphs span {
+  position: absolute;
+  color: rgb(8 10 9 / 0.35);
+  font-family: var(--font-mono);
+  font-size: clamp(0.8rem, 1.8vw, 1.5rem);
+  font-weight: 950;
+  animation: pp-glyph-float 4s ease-in-out infinite;
+}
+
+.meme-edge-glyphs span:nth-child(1) { top: 31%; left: 1.5%; }
+.meme-edge-glyphs span:nth-child(2) { top: 67%; left: 5%; animation-delay: -0.8s; }
+.meme-edge-glyphs span:nth-child(3) { top: 20%; left: 18%; animation-delay: -1.5s; }
+.meme-edge-glyphs span:nth-child(4) { top: 72%; right: 18%; animation-delay: -2.2s; }
+.meme-edge-glyphs span:nth-child(5) { top: 27%; right: 1.5%; animation-delay: -2.8s; }
+.meme-edge-glyphs span:nth-child(6) { top: 65%; right: 5%; animation-delay: -3.4s; }
+
+@media (max-width: 1023px) {
+  .meme-extras {
+    z-index: 1;
+  }
+
+  .meme-burst,
+  .meme-chat-sticker,
+  .meme-tape,
+  .meme-edge-glyphs {
+    display: none;
+  }
+
+  .meme-character-card {
+    width: 4.35rem;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 #fffdf0, 5px 5px 0 #080a09;
+  }
+
+  .meme-character-card figcaption {
+    border-top-width: 2px;
+    padding: 0.25rem 0.1rem 0.2rem;
+    font-size: 5px;
+  }
+
+  .meme-character-cat {
+    bottom: 3.5%;
+    left: 2%;
+  }
+
+  .meme-character-skeleton {
+    right: 2%;
+    bottom: 3.5%;
+  }
+
+  .meme-character-chad {
+    top: auto;
+    right: auto;
+    bottom: 2.5%;
+    left: calc(50% - 2.175rem);
+  }
+}
+
+@media (max-width: 1023px) and (max-height: 700px) {
+  .meme-extras {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -875,6 +1126,68 @@ a {
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes pp-meme-idle {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.008);
+  }
+}
+
+@keyframes pp-card-idle {
+  0%,
+  100% {
+    transform: rotate(-0.8deg) translateY(0);
+  }
+  50% {
+    transform: rotate(0.25deg) translateY(-3px);
+  }
+}
+
+@keyframes pp-burst-idle {
+  0%,
+  100% {
+    transform: rotate(-7deg) scale(1);
+  }
+  50% {
+    transform: rotate(2deg) scale(1.06);
+  }
+}
+
+@keyframes pp-chat-idle {
+  0%,
+  100% {
+    transform: rotate(2deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-1deg) translateY(-5px);
+  }
+}
+
+@keyframes pp-character-idle {
+  0%,
+  100% {
+    transform: rotate(var(--character-tilt, -3deg)) translateY(0);
+  }
+  50% {
+    transform: rotate(calc(var(--character-tilt, -3deg) + 2deg)) translateY(-6px);
+  }
+}
+
+@keyframes pp-glyph-float {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    opacity: 0.65;
+    transform: translateY(-8px) rotate(4deg);
   }
 }
 
