@@ -53,7 +53,6 @@ import {
   claimableLamports,
   collectCreatorFees,
   creatorVault,
-  estimateCreatorFeeClaimNetLamports,
   prepareCreatorFeeClaim,
   sendRewards,
   snapshotHolders,
@@ -695,6 +694,10 @@ async function rewardsAll() {
   const minClaimNetLamports = Math.ceil(
     num(option("min-claim"), 0.00005) * 1e9,
   );
+  const preparedClaims = new Map<
+    string,
+    Awaited<ReturnType<typeof prepareCreatorFeeClaim>>
+  >();
 
   console.log(`\n${C.bold("All creator rewards → main wallet")}`);
   console.log(`  Destination      ${depositWallet.publicKey.toBase58()}`);
@@ -713,12 +716,13 @@ async function rewardsAll() {
       creatorVault(depositWallet.publicKey),
     );
     try {
-      const net = await estimateCreatorFeeClaimNetLamports(
-        config,
-        depositWallet,
+      const prepared = await prepareCreatorFeeClaim(config, depositWallet);
+      preparedClaims.set(
+        depositWallet.publicKey.toBase58(),
+        prepared,
       );
       console.log(
-        `  legacy     ${short(depositWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(net)} estimated net`,
+        `  legacy     ${short(depositWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(prepared.netLamports)} estimated net`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -736,9 +740,10 @@ async function rewardsAll() {
       const vault = creatorVault(ownerWallet.publicKey);
       const pending = await claimableLamports(connection, vault);
       const balance = await connection.getBalance(ownerWallet.publicKey);
-      const net = await estimateCreatorFeeClaimNetLamports(config, ownerWallet);
+      const prepared = await prepareCreatorFeeClaim(config, ownerWallet);
+      preparedClaims.set(ownerWallet.publicKey.toBase58(), prepared);
       console.log(
-        `  ${label} ${short(ownerWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(net)} estimated net · ${sol(balance)} wallet`,
+        `  ${label} ${short(ownerWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(prepared.netLamports)} estimated net · ${sol(balance)} wallet`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -761,7 +766,10 @@ async function rewardsAll() {
   const claimIfProfitable = async (label: string, wallet: Keypair) => {
     process.stdout.write(`\n  ${label} · checking claim… `);
     try {
-      const prepared = await prepareCreatorFeeClaim(config, wallet);
+      const address = wallet.publicKey.toBase58();
+      const prepared =
+        preparedClaims.get(address) ??
+        (await prepareCreatorFeeClaim(config, wallet));
       const net = prepared.netLamports;
       if (net < minClaimNetLamports) {
         skippedClaims += 1;

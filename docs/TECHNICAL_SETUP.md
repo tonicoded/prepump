@@ -310,7 +310,9 @@ processed.
 Before signing, every claim is simulated in full. Claims whose estimated net
 wallet increase after network fees, priority fees and any new token-account
 rent is less than `0.00005 SOL` are deferred until more rewards accumulate.
-Override that safety margin only when necessary with `--min-claim <sol>`.
+The exact transaction returned for that simulation is reused for the claim, so
+PumpPortal is contacted only once per wallet. Override the safety margin only
+when necessary with `--min-claim <sol>`.
 
 **Deposits that cannot be paid.** Someone sending from an exchange has no wallet
 of their own in the transaction, so the sender cannot be identified. Those
