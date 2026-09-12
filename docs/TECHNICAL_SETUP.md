@@ -307,6 +307,11 @@ balance left behind by an interrupted sweep is recovered on the next run. One
 failed owner is reported but does not prevent the remaining owners from being
 processed.
 
+Before signing, every claim is simulated in full. Claims whose estimated net
+wallet increase after network fees, priority fees and any new token-account
+rent is less than `0.00005 SOL` are deferred until more rewards accumulate.
+Override that safety margin only when necessary with `--min-claim <sol>`.
+
 **Deposits that cannot be paid.** Someone sending from an exchange has no wallet
 of their own in the transaction, so the sender cannot be identified. Those
 amounts are reported separately by `scan` and excluded from the split.

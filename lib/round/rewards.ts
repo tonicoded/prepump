@@ -55,10 +55,23 @@ export async function claimableLamports(
 export async function collectCreatorFees(
   config: RoundConfig,
   walletOverride?: Keypair,
+  preparedTransaction?: VersionedTransaction,
 ) {
   const wallet = walletOverride ?? parseWallet(config.walletSecret);
   const connection = new Connection(config.rpcUrl, "confirmed");
+  const transaction =
+    preparedTransaction ?? (await creatorFeeTransaction(config, wallet));
 
+  transaction.sign([wallet]);
+
+  const signature = await connection.sendTransaction(transaction, {
+    maxRetries: 3,
+  });
+  await confirmSignature(connection, signature);
+  return signature;
+}
+
+async function creatorFeeTransaction(config: RoundConfig, wallet: Keypair) {
   const response = await fetch(config.pumpPortalUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -75,16 +88,51 @@ export async function collectCreatorFees(
     );
   }
 
-  const transaction = VersionedTransaction.deserialize(
+  return VersionedTransaction.deserialize(
     new Uint8Array(await response.arrayBuffer()),
   );
-  transaction.sign([wallet]);
+}
 
-  const signature = await connection.sendTransaction(transaction, {
-    maxRetries: 3,
+/**
+ * Simulates PumpPortal's complete claim, including network fees and any token
+ * accounts it needs to create. This is more reliable than reading only the
+ * bonding-curve vault because a creator can also have PumpSwap rewards.
+ */
+export async function estimateCreatorFeeClaimNetLamports(
+  config: RoundConfig,
+  walletOverride?: Keypair,
+) {
+  return (await prepareCreatorFeeClaim(config, walletOverride)).netLamports;
+}
+
+export async function prepareCreatorFeeClaim(
+  config: RoundConfig,
+  walletOverride?: Keypair,
+) {
+  const wallet = walletOverride ?? parseWallet(config.walletSecret);
+  const connection = new Connection(config.rpcUrl, "confirmed");
+  const transaction = await creatorFeeTransaction(config, wallet);
+  const before = await connection.getBalance(wallet.publicKey, "confirmed");
+  const simulation = await connection.simulateTransaction(transaction, {
+    sigVerify: false,
+    commitment: "confirmed",
+    accounts: {
+      encoding: "base64",
+      addresses: [wallet.publicKey.toBase58()],
+    },
   });
-  await confirmSignature(connection, signature);
-  return signature;
+
+  if (simulation.value.err) {
+    throw new LaunchError(
+      `Fee collection simulation failed: ${JSON.stringify(simulation.value.err)}`,
+    );
+  }
+
+  const after = simulation.value.accounts?.[0]?.lamports;
+  if (after === undefined || after === null) {
+    throw new LaunchError("Fee collection simulation returned no wallet balance.");
+  }
+  return { netLamports: after - before, transaction };
 }
 
 /**

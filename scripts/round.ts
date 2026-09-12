@@ -53,6 +53,8 @@ import {
   claimableLamports,
   collectCreatorFees,
   creatorVault,
+  estimateCreatorFeeClaimNetLamports,
+  prepareCreatorFeeClaim,
   sendRewards,
   snapshotHolders,
   type RewardPayout,
@@ -690,6 +692,9 @@ async function rewardsAll() {
   if (launchedRounds.length === 0) {
     die("No launched rounds were found.");
   }
+  const minClaimNetLamports = Math.ceil(
+    num(option("min-claim"), 0.00005) * 1e9,
+  );
 
   console.log(`\n${C.bold("All creator rewards → main wallet")}`);
   console.log(`  Destination      ${depositWallet.publicKey.toBase58()}`);
@@ -698,15 +703,27 @@ async function rewardsAll() {
   console.log(
     `  Owner reserve    ${config.walletFloorSol.toFixed(6)} SOL ${C.dim("kept for future claims")}`,
   );
+  console.log(
+    `  Minimum net      ${sol(minClaimNetLamports)} SOL ${C.dim("after all claim costs")}`,
+  );
 
   if (hasLegacyCreator) {
     const pending = await claimableLamports(
       connection,
       creatorVault(depositWallet.publicKey),
     );
-    console.log(
-      `  legacy     ${short(depositWallet.publicKey.toBase58())} · ${sol(pending)} bonding-vault claimable`,
-    );
+    try {
+      const net = await estimateCreatorFeeClaimNetLamports(
+        config,
+        depositWallet,
+      );
+      console.log(
+        `  legacy     ${short(depositWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(net)} estimated net`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.log(C.red(`  legacy     estimate unavailable: ${message}`));
+    }
   }
 
   for (const record of ownerRounds) {
@@ -719,8 +736,9 @@ async function rewardsAll() {
       const vault = creatorVault(ownerWallet.publicKey);
       const pending = await claimableLamports(connection, vault);
       const balance = await connection.getBalance(ownerWallet.publicKey);
+      const net = await estimateCreatorFeeClaimNetLamports(config, ownerWallet);
       console.log(
-        `  ${label} ${short(ownerWallet.publicKey.toBase58())} · ${sol(pending)} bonding-vault claimable · ${sol(balance)} wallet`,
+        `  ${label} ${short(ownerWallet.publicKey.toBase58())} · ${sol(pending)} bonding vault · ${sol(net)} estimated net · ${sol(balance)} wallet`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -733,37 +751,47 @@ async function rewardsAll() {
   }
 
   let claimed = 0;
+  let skippedClaims = 0;
   let swept = 0;
   let failedActions = 0;
   const reserveLamports = Math.ceil(config.walletFloorSol * 1e9);
   // One-signature SOL transfer is normally 5,000 lamports; double it so the
   // retained owner balance remains safely usable if network pricing changes.
   const sweepFeeBuffer = 10_000;
-  const isNoRewardsError = (error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    return /nothing|no .{0,24}(fee|reward)|zero|not found|does not exist/i.test(
-      message,
-    );
-  };
-
-  if (hasLegacyCreator) {
-    process.stdout.write("\n  legacy main wallet · claiming… ");
+  const claimIfProfitable = async (label: string, wallet: Keypair) => {
+    process.stdout.write(`\n  ${label} · checking claim… `);
     try {
-      const signature = await collectCreatorFees(config, depositWallet);
+      const prepared = await prepareCreatorFeeClaim(config, wallet);
+      const net = prepared.netLamports;
+      if (net < minClaimNetLamports) {
+        skippedClaims += 1;
+        console.log(
+          C.dim(
+            `skip (${sol(net)} SOL estimated net; need ${sol(minClaimNetLamports)})`,
+          ),
+        );
+        return;
+      }
+
+      process.stdout.write(`${sol(net)} SOL net · claiming… `);
+      const signature = await collectCreatorFees(
+        config,
+        wallet,
+        prepared.transaction,
+      );
       claimed += 1;
       console.log(C.green("done"));
       console.log(`    Claim tx       https://solscan.io/tx/${signature}`);
     } catch (error) {
+      failedActions += 1;
       const message = error instanceof Error ? error.message : "Claim failed";
-      if (isNoRewardsError(error)) {
-        console.log(C.dim("nothing new"));
-        console.log(`    ${C.dim(message)}`);
-      } else {
-        failedActions += 1;
-        console.log(C.red("failed"));
-        console.log(`    ${C.red(message)}`);
-      }
+      console.log(C.red("failed"));
+      console.log(`    ${C.red(message)}`);
     }
+  };
+
+  if (hasLegacyCreator) {
+    await claimIfProfitable("legacy main wallet", depositWallet);
   }
 
   for (const record of ownerRounds) {
@@ -773,23 +801,7 @@ async function rewardsAll() {
         record.roundId,
         record.ownerWallet!.address,
       );
-      process.stdout.write(`\n  ${label} · claiming… `);
-      try {
-        const signature = await collectCreatorFees(config, ownerWallet);
-        claimed += 1;
-        console.log(C.green("done"));
-        console.log(`    Claim tx       https://solscan.io/tx/${signature}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Claim failed";
-        if (isNoRewardsError(error)) {
-          console.log(C.dim("nothing new"));
-          console.log(`    ${C.dim(message)}`);
-        } else {
-          failedActions += 1;
-          console.log(C.red("failed"));
-          console.log(`    ${C.red(message)}`);
-        }
-      }
+      await claimIfProfitable(label, ownerWallet);
 
       const balance = await connection.getBalance(ownerWallet.publicKey);
       const amount = Math.max(
@@ -826,6 +838,7 @@ async function rewardsAll() {
 
   console.log(`\n  ${C.bold("Complete")}`);
   console.log(`  Claims sent      ${claimed}`);
+  console.log(`  Claims deferred  ${skippedClaims}`);
   console.log(`  Swept to main    ${C.green(`${sol(swept)} SOL`)}`);
   console.log(`  Failed actions   ${failedActions}\n`);
 }
@@ -924,6 +937,7 @@ try {
         "  --min <sol>   dust floor for a reward payout (default 0.00001)",
         "  --split       share creator fees with holders instead of keeping them",
         "  --all         with rewards, claim every owner and sweep to main wallet",
+        "  --min-claim   minimum estimated net SOL for a bulk claim (default 0.00005)",
         "  --rewards     with `auto`, also claim creator fees after the launch",
         "  --round <id>  override automatic round selection",
         "  --show-secret print an owner key for wallet import (sensitive)",
