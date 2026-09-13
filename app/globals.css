@@ -2172,3 +2172,311 @@ a {
   .round-deposit-disclosure { font-size: 0.66rem; line-height: 1.35; }
   .round-deposit-disclosure + .round-deposit-disclosure { display: none; }
 }
+
+/* Homepage deposit card: the live round in the hero's cream sticker skin. */
+.meme-deposit-card {
+  --dep-a: #2fe28b;
+  --dep-b: #8ef77e;
+  --dep-glow: rgb(47 226 139 / 0.55);
+  --dep-speed: 0.9s;
+  width: min(34rem, 90vw);
+  text-align: left;
+}
+.meme-deposit-card::before {
+  content: attr(data-tab);
+}
+.meme-deposit-card[data-stage="hot"] {
+  --dep-a: #ff8a2b;
+  --dep-b: #ffd36b;
+  --dep-glow: rgb(255 138 43 / 0.6);
+  --dep-speed: 0.6s;
+}
+.meme-deposit-card[data-stage="critical"] {
+  --dep-a: #ff4d4d;
+  --dep-b: #ffe678;
+  --dep-glow: rgb(255 77 77 / 0.65);
+  --dep-speed: 0.35s;
+  animation: deposit-shake 2.4s ease-in-out infinite;
+}
+.meme-deposit-card[data-closed="true"] {
+  --dep-a: #c9cfc4;
+  --dep-b: #dfe3da;
+}
+.deposit-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: clamp(0.5rem, 1.4vh, 0.85rem);
+}
+.deposit-stage {
+  display: inline-block;
+  transform: rotate(-1.5deg);
+  border: 2px solid #080a09;
+  background: var(--dep-a);
+  box-shadow: 2px 2px 0 #080a09;
+  padding: 0.2rem 0.5rem;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: clamp(0.6rem, 1.25vh, 0.72rem);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.meme-deposit-card[data-stage="idle"] .deposit-stage {
+  background: #fffdf0;
+}
+.meme-deposit-card[data-stage="critical"] .deposit-stage {
+  animation: deposit-blink 0.9s steps(2, end) infinite;
+}
+.deposit-timer {
+  display: inline-block;
+  color: #080a09;
+  font-size: clamp(1.6rem, min(5.4vh, 4.4vw), 2.8rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 3px 3px 0 var(--dep-a);
+}
+.meme-deposit-card[data-stage="critical"] .deposit-timer {
+  animation: round-throb 1s ease-in-out infinite;
+}
+.deposit-track {
+  position: relative;
+  height: clamp(22px, 3.6vh, 30px);
+  margin-top: clamp(0.5rem, 1.3vh, 0.75rem);
+  overflow: hidden;
+  border: 3px solid #080a09;
+  border-radius: 999px;
+  background: #fffdf0;
+  box-shadow: 3px 3px 0 #080a09;
+}
+.deposit-fill {
+  position: relative;
+  height: 100%;
+  min-width: 14px;
+  border-right: 3px solid #080a09;
+  border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--dep-a) 0 12px, var(--dep-b) 12px 24px);
+  background-size: 34px 34px;
+  box-shadow: 0 0 18px var(--dep-glow);
+  transition: width 0.25s linear;
+  animation: round-stripes var(--dep-speed) linear infinite;
+}
+.deposit-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.6) 45%, transparent 70%);
+  background-size: 220% 100%;
+  animation: round-shimmer 2.2s ease-in-out infinite;
+}
+.meme-deposit-card[data-stage="idle"] .deposit-fill,
+.meme-deposit-card[data-stage="idle"] .deposit-fill::after {
+  animation: none;
+  box-shadow: none;
+}
+.meme-deposit-card[data-stage="idle"] .deposit-fill::after {
+  background: none;
+}
+.deposit-spark {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  z-index: 2;
+  width: clamp(15px, 2.6vh, 20px);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  border: 2px solid #080a09;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0 30%, var(--dep-b) 60%);
+  box-shadow: 0 0 14px 5px var(--dep-glow);
+  animation: round-spark 0.7s ease-in-out infinite;
+}
+.deposit-ticks {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+}
+.deposit-ticks span {
+  border-right: 2px solid rgb(8 10 9 / 0.22);
+}
+.deposit-ticks span:last-child {
+  border-right: 0;
+}
+.deposit-hype-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: clamp(0.45rem, 1.2vh, 0.65rem);
+}
+.deposit-hype {
+  min-width: 0;
+  color: #080a09;
+  font-size: clamp(0.72rem, 1.6vh, 0.86rem);
+  font-weight: 800;
+  line-height: 1.35;
+  animation: round-hype-in 0.45s var(--ease-out-quint) both;
+}
+.deposit-percent {
+  flex: 0 0 auto;
+  border: 2px solid #080a09;
+  border-radius: 999px;
+  background: var(--dep-a);
+  padding: 0.1rem 0.45rem;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: clamp(0.56rem, 1.15vh, 0.66rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.deposit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 0.5rem;
+  margin-top: clamp(0.55rem, 1.5vh, 0.85rem);
+}
+.deposit-input {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 3px solid #080a09;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0.3rem 0.6rem;
+}
+.deposit-input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #080a09;
+  font-size: clamp(1rem, 2.4vh, 1.3rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.deposit-input input:disabled {
+  opacity: 0.5;
+}
+.deposit-input span {
+  color: rgb(8 10 9 / 0.55);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.deposit-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.deposit-presets button {
+  border: 2px solid #080a09;
+  border-radius: 8px;
+  background: #fffdf0;
+  box-shadow: 2px 2px 0 #080a09;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 900;
+  transition: transform 120ms ease;
+}
+.deposit-presets button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.deposit-presets button[aria-pressed="true"] {
+  background: var(--meme-green);
+}
+.deposit-presets button:disabled {
+  opacity: 0.4;
+}
+.deposit-cta {
+  display: block;
+  width: 100%;
+  margin-top: clamp(0.55rem, 1.5vh, 0.85rem);
+  transform: rotate(-0.5deg);
+  border: 3px solid #080a09;
+  border-radius: 10px;
+  background: var(--meme-green);
+  padding: clamp(0.55rem, 1.6vh, 0.85rem) 1rem;
+  box-shadow: 4px 4px 0 #080a09;
+  color: #080a09;
+  font-size: clamp(0.82rem, 2vh, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.deposit-cta:hover:not(:disabled) {
+  transform: rotate(0.3deg) translateY(-1px);
+  box-shadow: 6px 6px 0 #080a09;
+}
+.deposit-cta:disabled {
+  background: #e7e9df;
+  box-shadow: 3px 3px 0 rgb(8 10 9 / 0.35);
+  color: rgb(8 10 9 / 0.6);
+}
+.deposit-disclosure {
+  margin-top: clamp(0.45rem, 1.2vh, 0.65rem);
+  color: rgb(8 10 9 / 0.45);
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 0.9vh, 9px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.deposit-link {
+  margin-top: 0.35rem;
+  color: #080a09;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-decoration: underline;
+  text-transform: uppercase;
+}
+.deposit-error {
+  margin-top: 0.45rem;
+  border: 2px solid #d63b2f;
+  border-radius: 8px;
+  background: #ffe3df;
+  padding: 0.4rem 0.55rem;
+  color: #8f1d14;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+@keyframes deposit-shake {
+  0%, 88%, 100% { transform: rotate(-0.8deg) translate(0, 0); }
+  90% { transform: rotate(-1.2deg) translate(-2px, 1px); }
+  92% { transform: rotate(-0.4deg) translate(2px, -1px); }
+  94% { transform: rotate(-1.1deg) translate(-2px, 0); }
+  96% { transform: rotate(-0.5deg) translate(2px, 1px); }
+}
+@keyframes deposit-blink { 50% { background: #ffe678; } }
+@media (max-width: 639px) {
+  .meme-deposit-card { width: min(23rem, 92vw); }
+  .deposit-timer { font-size: clamp(1.3rem, 7vw, 1.8rem); }
+  .deposit-form { grid-template-columns: 1fr; gap: 0.4rem; }
+  .deposit-hype { font-size: 0.68rem; }
+  .deposit-track { height: 22px; }
+}
+@media (max-height: 700px) {
+  .deposit-disclosure { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meme-deposit-card,
+  .deposit-stage,
+  .deposit-timer,
+  .deposit-fill,
+  .deposit-fill::after,
+  .deposit-spark,
+  .deposit-hype { animation: none !important; }
+}

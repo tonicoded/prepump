@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { LaunchCountdown } from "./LaunchCountdown";
+import { DepositCard } from "./DepositCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { IconExternal } from "@/components/ui/Icons";
 import {
@@ -27,13 +28,22 @@ const PRELAUNCH_HEADLINES = [
   ["THE NEXT CULT COIN", "STARTS AS A MYSTERY."],
 ] as const;
 
-export function LaunchHero({ compact = false }: { compact?: boolean }) {
+export function LaunchHero({
+  compact = false,
+  deposits = false,
+}: {
+  compact?: boolean;
+  /** Show the live deposit card instead of the coming-soon countdown. */
+  deposits?: boolean;
+}) {
   const { round, status, revealed, scheduled } = useRound();
   const label = roundLabel(round.id);
 
   const headline = compact
     ? "text-[clamp(1.375rem,7.2vw,2rem)]"
-    : "text-[clamp(2.1rem,min(8vh,6.4vw),5.5rem)]";
+    : deposits
+      ? "text-[clamp(1.7rem,min(5.6vh,5vw),4rem)]"
+      : "text-[clamp(2.1rem,min(8vh,6.4vw),5.5rem)]";
 
   /* ------------------------------- Revealed ------------------------------ */
   if (revealed) {
@@ -136,7 +146,7 @@ export function LaunchHero({ compact = false }: { compact?: boolean }) {
   return (
     <div className="meme-hero flex min-h-0 flex-col items-center justify-center text-center">
       <span className="meme-round-sticker">
-        PREPUMP ROUND {label}
+        {deposits ? "PREPUMP · MYSTERY DROP" : `PREPUMP ROUND ${label}`}
       </span>
 
       <h1
@@ -145,17 +155,25 @@ export function LaunchHero({ compact = false }: { compact?: boolean }) {
         <RotatingHeadline />
       </h1>
 
-      <p
-        className={`meme-subcopy mt-[clamp(0.75rem,2vh,1.25rem)] max-w-[35rem] text-[clamp(0.75rem,1.8vh,1rem)] leading-snug ${
-          compact ? "[@media(max-height:720px)]:hidden" : ""
-        }`}
-      >
-        Commit SOL before the reveal. When the clock hits zero, the mystery
-        coin launches on pump.fun.
-      </p>
+      {!deposits && (
+        <p
+          className={`meme-subcopy mt-[clamp(0.75rem,2vh,1.25rem)] max-w-[35rem] text-[clamp(0.75rem,1.8vh,1rem)] leading-snug ${
+            compact ? "[@media(max-height:720px)]:hidden" : ""
+          }`}
+        >
+          Commit SOL before the reveal. When the clock hits zero, the mystery
+          coin launches on pump.fun.
+        </p>
+      )}
 
-      <div className="mt-[clamp(1rem,3.4vh,2.5rem)]">
-        {scheduled && round.closesAt !== null ? (
+      <div
+        className={
+          deposits ? "mt-[clamp(0.9rem,2.4vh,1.6rem)]" : "mt-[clamp(1rem,3.4vh,2.5rem)]"
+        }
+      >
+        {deposits ? (
+          <DepositCard />
+        ) : scheduled && round.closesAt !== null ? (
           <LaunchCountdown
             target={round.closesAt}
             size={compact ? "compact" : "hero"}

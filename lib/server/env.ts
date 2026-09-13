@@ -24,6 +24,8 @@ export function getServerEnv() {
     portalEnabled:
       process.env.NODE_ENV !== "production" ||
       process.env.DEV_PORTAL_ENABLED === "true",
+    /** Puts the live deposit card on the homepage. */
+    homeDepositsEnabled: process.env.HOME_DEPOSITS_ENABLED === "true",
     accessToken: clean(process.env.DEV_PORTAL_ACCESS_TOKEN),
 
     /** simulate = nothing is broadcast. live = real mainnet launch. */

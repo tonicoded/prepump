@@ -4,7 +4,8 @@ import { getDepositRound } from "@/lib/server/deposit-round";
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  if (!getServerEnv().portalEnabled) {
+  const env = getServerEnv();
+  if (!env.portalEnabled && !env.homeDepositsEnabled) {
     return Response.json({ error: "Round unavailable." }, { status: 404 });
   }
   // Public read-only data: no balances, secrets or operator access token.
