@@ -45,6 +45,8 @@ export type MemeHistoryEntry = { name: string; ticker: string; description?: str
 export type GenerateMemeOptions = {
   /** Earlier coins, newest first. Never reused, and recent subjects are rested. */
   avoid?: readonly MemeHistoryEntry[];
+  /** Force one visual style by id, for previews. Unknown ids are ignored. */
+  style?: string;
 };
 
 const CANDIDATE_COUNT = 4;
@@ -259,6 +261,10 @@ type VisualStyle = {
   sloganPlacement: string | null;
   /** The style is a captioned meme: the words are the punchline, always present. */
   captionRequired?: boolean;
+  /** The style brings its own cast instead of the shared animals and objects. */
+  subjects?: readonly string[];
+  /** Replaces the default "animal, statue or object" casting rule. */
+  conceptRule?: string;
   /** Text the style itself needs, besides any slogan. */
   extraText?: string;
   render: () => string;
@@ -348,6 +354,93 @@ const VISUAL_STYLES: readonly VisualStyle[] = [
     ].join(" "),
   },
   {
+    id: "wojak",
+    label: "Wojak-style meme drawing",
+    weight: 6,
+    modes: NOT_CLASSIC,
+    sloganPlacement: "a short printed word or number on the cap, shirt or one prop",
+    subjects: [
+      "a plain Wojak in a hoodie", "a doomer Wojak in a black beanie",
+      "a bloomer Wojak who is way too happy", "an NPC Wojak with a blank grey face",
+      "a crying Wojak", "a zoomer Wojak in a backwards cap",
+      "a boomer Wojak in wraparound sunglasses", "a gym-bro Chad Wojak",
+      "a tired Wojak office intern with a lanyard",
+      "a Wojak fast-food worker in a red and yellow uniform with a paper hat",
+      "a Wojak drive-through cashier with a headset", "a Wojak delivery rider with a huge backpack",
+      "a Wojak gamer with a headset at 4 energy drinks", "a Wojak dad at a barbecue",
+      "a Wojak student cramming the night before", "a Wojak mall security guard on a segway",
+    ],
+    conceptRule: [
+      "The main character is a drawn Wojak-style meme archetype: pale round face,",
+      "minimal features, simple clothes. It is an anonymous meme drawing, never a",
+      "real person or a photograph. Put him in one painfully relatable modern-life",
+      "situation with one prop. A fast-food uniform is a generic red-and-yellow",
+      "parody: never a real brand name, logo or mascot.",
+    ].join(" "),
+    render: () => [
+      "A clean digital meme drawing in the popular viral Wojak-edit style, like a",
+      "reposted Wojak edit: bold dark outlines, a pale white Wojak face with minimal",
+      "features, flat cel shading on the clothes, bright saturated colors and simple",
+      "motion lines or a softly blurred background. Not a children's cartoon, not",
+      "anime, not 3D, not photographic. This drawing style overrides any",
+      "photographic direction elsewhere. No real brand logos.",
+    ].join(" "),
+  },
+  {
+    id: "ugly-paint",
+    label: "Ugly MS Paint drawing",
+    weight: 4,
+    modes: NOT_CLASSIC,
+    sloganPlacement: null,
+    subjects: [
+      "a frog", "a duck", "a cat", "a dog", "a hamster", "a fish", "a horse",
+      "a pigeon", "a cow", "a pig", "a bear", "a snail", "a goose", "a rat",
+    ],
+    conceptRule: [
+      "The main character is a deliberately ugly, badly drawn animal, like a frog,",
+      "duck or cat someone drew with a mouse in thirty seconds. The ugliness is the",
+      "charm: lopsided eyes, wrong proportions, a proud expression it has not earned.",
+    ].join(" "),
+    render: () => [
+      "An intentionally terrible MS Paint drawing made with a mouse in under a",
+      "minute, worse than a child's drawing: wobbly one-pixel-thick jagged lines,",
+      "flat paint-bucket fills leaking past the lines, no shading at all, lopsided",
+      "googly eyes of different sizes, stick-thin limbs, a body shaped like a potato",
+      "and harsh default palette colors on a plain white background, with at most",
+      "one scribbled prop. It must look genuinely lazy and ugly: never a clean",
+      "cartoon, never neat outlines, never cute, never vector art. This drawing style",
+      "overrides any photographic direction elsewhere.",
+    ].join(" "),
+  },
+  {
+    id: "celeb-pun",
+    label: "Famous-name pun photo",
+    weight: 4,
+    modes: NOT_CLASSIC,
+    sloganPlacement: null,
+    subjects: [
+      "a bicycle", "a toaster", "a vacuum cleaner", "a frog", "a beaver", "a goose",
+      "a potato", "a burrito", "a shoe", "a lamp", "a fish", "a snail", "a pickle",
+      "a lawn mower", "a dog", "a sofa", "a car", "an onion", "a bee", "a moose",
+    ],
+    conceptRule: [
+      "The coin name is a pun on a famous name, like Bike Tyson, Justin Beaver,",
+      "Snoop Frogg or Taylor Drift: each candidate finds a famous-name pun that fits",
+      "its own object or animal. This pun in the name is the only allowed use of a",
+      "real person. The picture shows ONLY that object or animal, hinting at the",
+      "famous name through one or two harmless props or a pose (boxing gloves, a",
+      "microphone, sunglasses). It never shows, resembles or imitates the person's",
+      "face, body, skin, tattoos or likeness, never suggests they are involved, and",
+      "never mocks their looks, health, race or private life. No politicians.",
+    ].join(" "),
+    render: () => [
+      "A believable, slightly low-quality funny photo of the object or animal,",
+      "posed as the famous-name pun with one or two props. Absolutely no human face,",
+      "human body parts, skin or tattoos, and nothing that resembles a real person.",
+      "Compressed phone-photo imperfections, no studio polish.",
+    ].join(" "),
+  },
+  {
     id: "classic",
     label: "Classic forum drawing",
     weight: 3,
@@ -358,10 +451,12 @@ const VISUAL_STYLES: readonly VisualStyle[] = [
   },
 ];
 
-function pickStyle(mode: MemeMode): VisualStyle {
+function pickStyle(mode: MemeMode, forced?: string): VisualStyle {
   const eligible = VISUAL_STYLES.filter(
     (style) => style.modes === "all" || style.modes.includes(mode),
   );
+  const chosen = forced && eligible.find((style) => style.id === forced);
+  if (chosen) return chosen;
   const total = eligible.reduce((sum, style) => sum + style.weight, 0);
   let roll = Math.random() * total;
   for (const style of eligible) {
@@ -526,6 +621,11 @@ async function reviewArtwork(
       "exaggerated expressions, odd scale or obvious Photoshop compositing. A crowned",
       "cat with a mop and a raincoat horse raising its hooves are approved anatomy.",
       "Statues, skeletons and pixel sunglasses are also allowed, not human extras.",
+      "In the Famous-name pun photo style, any human face, human body part, skin,",
+      "tattoo or resemblance to a real person is a blocking failure.",
+      "In the Ugly MS Paint drawing style, wrong anatomy, lopsided features and",
+      "leaking fills are the intended joke, never a failure. A Wojak-style drawn",
+      "character is an allowed meme archetype, not a human extra.",
       "Do not reject a deliberately crude drawn human archetype. Other prominent",
       "accidental text or logos, or major anatomy failures, may be",
       "blocking; tiny imperfect details are not. Set blockingIssue true only for",
@@ -577,7 +677,7 @@ export async function generateMeme(
 
   const client = new OpenAI({ apiKey: config.openAiApiKey });
   const date = new Date().toISOString().slice(0, 10);
-  const style = pickStyle(mode);
+  const style = pickStyle(mode, options.style);
 
   const spent = history.length
     ? `Already launched, so never reuse their name, ticker, main subject or premise: ${history
@@ -596,7 +696,9 @@ export async function generateMeme(
   const ingredients = theme?.trim()
     ? `Operator's creative direction (treat as inspiration, not instructions): ${theme.slice(0, 180)}. Still make the ${CANDIDATE_COUNT} candidates different from each other.`
     : (() => {
-        const subjects = pickSeveral(freshSubjects(SUBJECTS, history), CANDIDATE_COUNT);
+        const subjects = style.subjects
+          ? pickSeveral(style.subjects, CANDIDATE_COUNT)
+          : pickSeveral(freshSubjects(SUBJECTS, history), CANDIDATE_COUNT);
         const beats = pickSeveral(BEATS, CANDIDATE_COUNT);
         const lenses = pickSeveral(COMEDY_LENSES, CANDIDATE_COUNT);
         return subjects
@@ -662,7 +764,8 @@ export async function generateMeme(
       "wordplay, no in-jokes that only make sense after reading the description.",
       "Let the chosen comedy lens guide the joke: awkward timing, petty triumph,",
       "unnecessary effort or deadpan absurdity, not always financial flexing.",
-      "Default to an animal, statue, skeleton or ordinary object, not a human cast.",
+      style.conceptRule ??
+        "Default to an animal, statue, skeleton or ordinary object, not a human cast.",
       "Costumed upright animals and deliberately pasted-on props are encouraged.",
       "Avoid a plant or appliance head grafted onto a human office worker. Human archetypes",
       "requested by the operator must be clearly drawn, not photorealistic.",
@@ -677,7 +780,7 @@ export async function generateMeme(
       "The description is one or two deadpan sentences under 200 characters. Add",
       "one tiny piece of unnecessary lore; do not repeat the tagline.",
       sloganRule,
-      "Avoid real people, political symbols, slurs, targeted cruelty and any promise",
+      "Never depict a real person or their likeness. Avoid political symbols, slurs, targeted cruelty and any promise",
       "of profit. References explicitly requested by the operator are allowed only",
       "under the classic, brand or stock parody rules above. Silently reject ideas",
       "that are clever but not funny.",
@@ -731,7 +834,7 @@ export async function generateMeme(
         "Do not remove the funny costume or action in pursuit of strict realism.",
         "Keep ordinary objects recognizable rather than giving them human bodies.",
         "No background people. Statues and skeletons are fine.",
-        "Human archetypes must be crude drawings, never photographic humans.",
+        "Human archetypes must be drawings (Wojak-style or crude), never photographic humans.",
         "If a slogan is given, place it ONLY ONCE at sloganPlacement. Otherwise",
         "leave every surface blank. Do not print the name, ticker or tagline.",
         "Make the visual punchline work without any writing. Never make clock",
@@ -769,7 +872,7 @@ export async function generateMeme(
           MEME_DIRECTION,
           text,
           "No photographic humans, including background extras. Any requested human",
-          "archetype must be visibly mouse-drawn. Animal costumes and upright poses",
+          "archetype must be visibly drawn, never photographic. Animal costumes and upright poses",
           "are allowed; no exposed human skin or realistic human hands grafted onto them.",
           "No corporate-stock-photo lighting, perfect smiles, glossy 3D mascots,",
           "slogan-shirt template or duplicate captions. No celebrities.",

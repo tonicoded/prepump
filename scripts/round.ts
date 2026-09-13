@@ -1199,15 +1199,17 @@ async function memes() {
   const mode = normalizeMemeMode(option("mode") ?? process.env.ROUND_MEME_MODE);
   const theme = option("theme") ?? process.env.ROUND_THEME;
   const history = loadMemeHistory();
+  /** `--style wojak` previews one visual style instead of the random mix. */
+  const forcedStyle = option("style");
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const dir = path.join(process.cwd(), ".round", "previews", stamp);
   mkdirSync(dir, { recursive: true });
 
-  console.log(`\n${C.bold(`Generating ${count} preview memes`)}  ${C.dim(`mode ${mode}`)}`);
+  console.log(`\n${C.bold(`Generating ${count} preview memes`)}  ${C.dim(`mode ${mode}${forcedStyle ? ` · style ${forcedStyle}` : ""}`)}`);
   console.log(C.dim("  Nothing is launched. This only spends OpenAI credits.\n"));
 
   const results = await Promise.allSettled(
-    Array.from({ length: count }, () => generateMeme(config, theme, true, mode, { avoid: history })),
+    Array.from({ length: count }, () => generateMeme(config, theme, true, mode, { avoid: history, style: forcedStyle })),
   );
 
   const tiles: { image: Buffer; caption: string[] }[] = [];
