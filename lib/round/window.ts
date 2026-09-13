@@ -18,4 +18,5 @@ export type PublicDepositRound = DepositWindow & {
   serverNow: number;
   status: ReturnType<typeof depositWindowState> | "LAUNCHED";
   depositAddress: string | null;
+  unavailableReason?: string;
 };

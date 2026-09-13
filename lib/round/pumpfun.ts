@@ -224,7 +224,7 @@ export async function getWalletBalance(config: RoundConfig) {
   return getBalanceForAddress(config, wallet.publicKey.toBase58());
 }
 
-export async function createPumpToken(
+export async function preparePumpToken(
   config: RoundConfig,
   draft: TokenDraft,
   buySol: number,
@@ -282,16 +282,30 @@ export async function createPumpToken(
   );
   transaction.sign([mintKeypair, wallet]);
 
+  return {
+    transaction,
+    result: {
+      mint: mintKeypair.publicKey.toBase58(),
+      signature: bs58.encode(transaction.signatures[0]),
+      imageUri,
+      metadataUri,
+      buySol,
+    },
+  };
+}
+
+export async function createPumpToken(
+  config: RoundConfig,
+  draft: TokenDraft,
+  buySol: number,
+  walletOverride?: Keypair,
+) {
+  const { transaction, result } = await preparePumpToken(config, draft, buySol, walletOverride);
+  const connection = new Connection(config.rpcUrl, "confirmed");
   const signature = await connection.sendTransaction(transaction, {
     maxRetries: 3,
   });
   await confirmSignature(connection, signature);
 
-  return {
-    mint: mintKeypair.publicKey.toBase58(),
-    signature,
-    imageUri,
-    metadataUri,
-    buySol,
-  };
+  return { ...result, signature };
 }

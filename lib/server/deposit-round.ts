@@ -51,5 +51,8 @@ export function getDepositRound(scope: RoundScope = "home"): PublicDepositRound 
     serverNow,
     status: launched ? "LAUNCHED" : depositWindowState(config, serverNow),
     depositAddress,
+    ...(scope === "dev" && !process.env.PINATA_JWT?.trim()
+      ? { unavailableReason: "Launch setup incomplete — deposits temporarily disabled." }
+      : {}),
   };
 }

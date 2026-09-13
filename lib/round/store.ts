@@ -1,4 +1,5 @@
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync } from "node:fs";
+import type { ParticipantExecution } from "./participant-execution.ts";
 import path from "node:path";
 
 export type Deposit = {
@@ -23,6 +24,7 @@ export type RoundRecord = {
   scannedAt?: string;
   deposits: Deposit[];
   totalLamports: number;
+  participantExecution?: ParticipantExecution;
 
   ownerWallet?: {
     address: string;
@@ -105,6 +107,7 @@ export function listRounds(): RoundRecord[] {
 export function nextRoundId(minimum = 1) {
   const latest = listRounds().filter((record) => record.roundId >= minimum).at(-1);
   if (!latest) return minimum;
+  if (latest.participantExecution && !latest.participantExecution.completedAt) return latest.roundId;
   return latest.launch ? latest.roundId + 1 : latest.roundId;
 }
 
@@ -161,6 +164,9 @@ export function loadUsedDepositSignatures(excludeRoundId: number) {
 
 export function saveRound(record: RoundRecord) {
   mkdirSync(roundDataDir(), { recursive: true });
-  writeFileSync(roundFile(record.roundId), JSON.stringify(record, null, 2));
+  const file = roundFile(record.roundId);
+  const temporary = file + ".tmp";
+  writeFileSync(temporary, JSON.stringify(record, null, 2), { mode: 0o600 });
+  renameSync(temporary, file);
   return record;
 }

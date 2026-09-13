@@ -35,6 +35,7 @@ export function DevPortal({ initialRound }: { initialRound: PublicDepositRound }
   return (
     <div className="relative mx-auto flex h-full w-full max-w-[112rem] items-center justify-center px-[clamp(0.875rem,4vw,3rem)] py-[clamp(1rem,3vh,2rem)]">
       <div className="dev-stage">
+        {round?.unavailableReason && <p className="dev-error" role="status">{round.unavailableReason}</p>}
         <span className="meme-round-sticker">
           MYSTERY DROP · ROUND #{String(round?.roundId ?? 0).padStart(3, "0")}
         </span>

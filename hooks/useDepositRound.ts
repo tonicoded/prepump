@@ -126,7 +126,7 @@ export function useDepositRound(
       ? "LAUNCHED"
       : depositWindowState(round, now);
   const open =
-    !!round && fresh && phase === "OPEN" && round.status === "OPEN" && !!round.depositAddress;
+    !!round && fresh && phase === "OPEN" && round.status === "OPEN" && !!round.depositAddress && !round.unavailableReason;
   const remaining = !round
     ? 0
     : phase === "UPCOMING"
@@ -175,6 +175,7 @@ export function useDepositRound(
           current.round.roundId !== expectedRound ||
           current.round.depositAddress !== expectedDestination ||
           current.round.status !== "OPEN" ||
+          !!current.round.unavailableReason ||
           depositWindowState(current.round, serverNow) !== "OPEN"
         ) {
           throw new Error("This round is no longer accepting deposits.");
@@ -214,6 +215,7 @@ export function useDepositRound(
   };
 
   const label =
+    round?.unavailableReason ? "Launch setup incomplete" :
     phase === "LAUNCHED"
       ? "Round launched"
       : phase === "CLOSED"

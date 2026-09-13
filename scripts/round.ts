@@ -11,7 +11,7 @@
  * Run it yourself when the countdown reaches zero. Nothing here is scheduled.
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import {
@@ -33,6 +33,7 @@ import {
   nextRoundId,
   saveRound,
   roundFile,
+  roundDataDir,
   type Payout,
   type RoundRecord,
 } from "../lib/round/store.ts";
@@ -53,6 +54,7 @@ import { generateMeme } from "../lib/round/meme.ts";
 import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
 import { netBuyLamports } from "../lib/round/budget.ts";
 import { createPumpToken, parseWallet } from "../lib/round/pumpfun.ts";
+import { runParticipantRound } from "../lib/round/participant-execution.ts";
 import {
   allocate,
   readTokenBalance,
@@ -97,6 +99,17 @@ const option = (name: string) => {
 /** `--data .round/archive/test-2026-09` runs a command against an archived season. */
 const dataDir = option("data");
 if (dataDir) process.env.ROUND_DATA_DIR = dataDir;
+if (flag("dev")) {
+  if (dataDir || !process.env.DEV_ROUND_DATA_DIR || !process.env.DEV_ROUND_CLOSES_AT ||
+      !process.env.DEV_DEPOSIT_ADDRESS || !process.env.DEV_ROUND_ID) {
+    die("--dev requires DEV_ROUND_DATA_DIR, DEV_ROUND_ID, DEV_ROUND_CLOSES_AT and DEV_DEPOSIT_ADDRESS; do not combine it with --data.");
+  }
+  process.env.ROUND_DATA_DIR = process.env.DEV_ROUND_DATA_DIR;
+  process.env.ROUND_ID = process.env.DEV_ROUND_ID;
+  process.env.ROUND_OPENS_AT = process.env.DEV_ROUND_OPENS_AT;
+  process.env.ROUND_CLOSES_AT = process.env.DEV_ROUND_CLOSES_AT;
+  process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS = process.env.DEV_DEPOSIT_ADDRESS;
+}
 
 const config = readRoundConfig();
 const requestedRound = Number(option("round"));
@@ -321,6 +334,9 @@ async function scan() {
   requireWindow();
   const wallet = roundDepositWallet(config.roundId);
   const existing = loadRound(config.roundId);
+  if (existing?.participantExecution) {
+    die("This round has a frozen participant execution plan. Resume it; do not rescan funded deposits.");
+  }
   if (existing?.launch) {
     die(
       `Round #${config.roundId} is already launched. The automatic counter should ` +
@@ -367,6 +383,10 @@ async function scan() {
   }
 
   const record = existing ?? blankRecord(wallet.publicKey.toBase58());
+  if (loadRound(config.roundId)?.participantExecution ||
+      existsSync(path.join(roundDataDir(), `round-${config.roundId}.execution.lock`))) {
+    die("Participant execution started during the scan. The frozen deposit list was not changed.");
+  }
   record.deposits = result.deposits;
   record.totalLamports = result.totalLamports;
   record.scannedAt = new Date().toISOString();
@@ -410,7 +430,7 @@ async function launch() {
   const depositWallet = roundDepositWallet(config.roundId);
 
   let record = loadRound(config.roundId);
-  if (record?.launch && !flag("force")) {
+  if (record?.launch && !record.participantExecution && !flag("force")) {
     die(`Round #${config.roundId} already launched: ${record.launch.mint}. Pass --force to launch again.`);
   }
   if (Date.now() < config.closesAt && !flag("now")) {
@@ -429,8 +449,27 @@ async function launch() {
   if (record.ownerWallet.address !== ownerWallet.publicKey.toBase58()) {
     die("The saved owner key does not match this round's owner address.");
   }
-  saveRound(record);
+  // New rounds use one buy wallet per real depositor. Never switch funded legacy rounds.
+  if (record.participantExecution || !record.ownerWallet.fundingSignature) {
+    if (flag("force") || option("buy") !== undefined) {
+      die("--force and --buy are unavailable for individual participant execution.");
+    }
+    if (!flag("yes")) die("Add --yes to fund participant wallets and execute real purchases.");
+    return runParticipantRound(config, record, depositWallet, ownerWallet, async () => {
+      console.log("Generating meme after participant funding…");
+      const meme = await generateMeme(config, process.env.ROUND_THEME, true,
+        normalizeMemeMode(process.env.ROUND_MEME_MODE));
+      if (!meme.imageDataUrl && !flag("no-art")) {
+        throw new Error(meme.imageError ?? "Artwork failed. Buyer funds are saved; resume the same round.");
+      }
+      return {
+        name: meme.name, symbol: meme.ticker, description: meme.description,
+        tagline: meme.tagline, imageDataUrl: meme.imageDataUrl,
+      };
+    });
+  }
 
+  saveRound(record);
   const depositBalance = await connection.getBalance(depositWallet.publicKey);
   const ownerBalance = await connection.getBalance(ownerWallet.publicKey);
   const balance = depositBalance + ownerBalance;
@@ -593,6 +632,16 @@ async function launch() {
 async function distribute() {
   const record = loadRound(config.roundId);
   if (!record?.launch) die("This round has not launched yet.");
+  if (record.participantExecution) {
+    if (record.participantExecution.completedAt) {
+      console.log("All participant purchases, token payouts and buyer SOL refunds are complete.");
+      return;
+    }
+    if (!flag("yes")) die("Add --yes to resume participant buys and payouts.");
+    await runParticipantRound(config, record, roundDepositWallet(record.roundId), signingWallet(record),
+      async () => { throw new Error("Saved meme is missing; resume using go."); });
+    return;
+  }
   const wallet = signingWallet(record);
 
   const mint = new PublicKey(record.launch.mint);
@@ -1034,7 +1083,7 @@ async function auto() {
   requireWindow();
   roundDepositWallet(config.roundId);
   parseWallet(config.walletSecret);
-  if (loadRound(config.roundId)?.launch && !flag("force")) {
+  if (loadRound(config.roundId)?.launch && !loadRound(config.roundId)?.participantExecution && !flag("force")) {
     die(`Round #${config.roundId} already launched. Bump ROUND_ID, or pass --force.`);
   }
   if (!flag("yes")) {
@@ -1180,6 +1229,7 @@ try {
         "Usage: npm run round <status|new|scan|launch|distribute|rewards|owner|deposit|auto|go|memes> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
+        "  --dev         use the isolated /dev round, wallet and data directory",
         "  --now         launch before ROUND_CLOSES_AT",
         "  --force       launch a round that already launched",
         "  --last <min>  use the past N minutes as the round window",
