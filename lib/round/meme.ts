@@ -732,14 +732,66 @@ export async function generateMeme(
       return data;
     };
 
-    let encoded = await generateArtwork();
+    const isSafetyRejection = (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      return /safety system|safety|content policy|moderation|request was rejected/i.test(
+        message,
+      );
+    };
+
+    let safetyRetryUsed = false;
+    const generateWithSafetyRecovery = async (correction?: string) => {
+      try {
+        return await generateArtwork(correction);
+      } catch (error) {
+        if (safetyRetryUsed || !isSafetyRejection(error)) throw error;
+        safetyRetryUsed = true;
+
+        // Image moderation occasionally rejects an innocent but ambiguous
+        // phrase. Rewrite only the visual scene, keeping the already-finalized
+        // coin identity intact, then retry once without the rejected wording.
+        const safeBriefResponse = await client.responses.parse({
+          model: config.openAiModel,
+          store: false,
+          instructions: [
+            "Rewrite the supplied meme artwork scene as an unambiguously harmless",
+            "image prompt. Preserve the exact named subject, its recognizable visual",
+            "identity and the one-second joke, but replace ambiguous wording or props",
+            "with a silly low-stakes everyday equivalent. The subject is an entirely",
+            "original fictional creation, never a real person, celebrity, political",
+            "figure, protected character or official brand mascot. No violence, danger,",
+            "weapons, drugs, hate, nudity or sexual content. Use one main subject and at",
+            "most one ordinary prop. Do not discuss moderation or explain the rewrite.",
+          ].join(" "),
+          input: JSON.stringify({
+            name: meme.name,
+            ticker: meme.ticker,
+            tagline: meme.tagline,
+            description: meme.description,
+            rejectedScene: meme.imagePrompt,
+            intendedSlogan: meme.slogan || null,
+          }),
+          text: { format: zodTextFormat(imageBriefSchema, "safe_meme_image_brief") },
+        });
+        if (!safeBriefResponse.output_parsed) {
+          throw new Error("OpenAI returned no safety-rewritten image brief.");
+        }
+        meme = {
+          ...meme,
+          imagePrompt: safeBriefResponse.output_parsed.imagePrompt,
+        };
+        return generateArtwork();
+      }
+    };
+
+    let encoded = await generateWithSafetyRecovery();
     let review = await reviewArtwork(client, config.openAiModel, meme, encoded);
     const needsRetry = () =>
       !review.identityAnchorVisible ||
       !review.coreJokeReadable ||
       review.blockingIssue;
     if (needsRetry()) {
-      encoded = await generateArtwork(review.correction);
+      encoded = await generateWithSafetyRecovery(review.correction);
       review = await reviewArtwork(client, config.openAiModel, meme, encoded);
     }
     if (needsRetry()) {

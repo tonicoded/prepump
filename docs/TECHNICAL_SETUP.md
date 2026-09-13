@@ -145,6 +145,11 @@ The image comes back at `OPENAI_IMAGE_SIZE`, then sharp crops it to a
 `TOKEN_IMAGE_SIZE` square webp before it is pinned. That keeps the payload
 small and gives pump.fun exactly the square it displays.
 
+If image moderation rejects an otherwise harmless prompt, the text model
+rewrites only the visual scene into an explicitly safe, low-stakes equivalent
+while preserving the finalized coin name and joke, then the image request is
+retried once automatically. Funding still happens only after artwork succeeds.
+
 To steer one round by hand, type a direction into the field that appears when
 deposits lock. It replaces the random subject for that round only.
 
