@@ -14,5 +14,5 @@ export const dynamic = "force-dynamic";
 export default function DevPage() {
   const config = getServerEnv();
   if (!config.portalEnabled) notFound();
-  return <DevPortal initialRound={getDepositRound()} />;
+  return <DevPortal initialRound={getDepositRound("dev")} />;
 }

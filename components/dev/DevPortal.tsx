@@ -30,7 +30,7 @@ export function DevPortal({ initialRound }: { initialRound: PublicDepositRound }
     lastDeposit,
     label,
     buy,
-  } = useDepositRound(initialRound);
+  } = useDepositRound(initialRound, "dev");
 
   return (
     <div className="relative mx-auto flex h-full w-full max-w-[112rem] items-center justify-center px-[clamp(0.875rem,4vw,3rem)] py-[clamp(1rem,3vh,2rem)]">

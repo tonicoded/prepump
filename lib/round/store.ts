@@ -62,20 +62,19 @@ export type RoundRecord = {
  * Base folder for round data. ROUND_DATA_DIR points the tools at another
  * season, for example an archived set of test rounds.
  */
-export function roundDataDir() {
-  const configured = process.env.ROUND_DATA_DIR?.trim();
+export function roundDataDir(configured = process.env.ROUND_DATA_DIR?.trim()) {
   return configured
     ? path.resolve(process.cwd(), configured)
     : path.join(process.cwd(), ".round");
 }
 
-export function roundFile(roundId: number) {
-  return path.join(roundDataDir(), `round-${String(roundId).padStart(3, "0")}.json`);
+export function roundFile(roundId: number, dataDir = roundDataDir()) {
+  return path.join(dataDir, `round-${String(roundId).padStart(3, "0")}.json`);
 }
 
-export function loadRound(roundId: number): RoundRecord | null {
+export function loadRound(roundId: number, dataDir?: string): RoundRecord | null {
   try {
-    return JSON.parse(readFileSync(roundFile(roundId), "utf8")) as RoundRecord;
+    return JSON.parse(readFileSync(roundFile(roundId, dataDir), "utf8")) as RoundRecord;
   } catch {
     return null;
   }

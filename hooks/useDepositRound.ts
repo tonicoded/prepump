@@ -53,7 +53,10 @@ export function sanitizeAmount(raw: string) {
  * server's clock, and rechecks the round right before the wallet prompt so a
  * closed round can never be deposited into from this page.
  */
-export function useDepositRound(initialRound: PublicDepositRound | null = null) {
+export function useDepositRound(
+  initialRound: PublicDepositRound | null = null,
+  scope: "home" | "dev" = "home",
+) {
   const { address, openModal, sendTransaction, refreshBalance } = useWallet();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [clock, setClock] = useState(0);
@@ -71,7 +74,10 @@ export function useDepositRound(initialRound: PublicDepositRound | null = null) 
   const refreshRound = useCallback(async () => {
     const version = ++requestVersion.current;
     const measuredAt = performance.now();
-    const response = await fetch("/api/round/status", { cache: "no-store" });
+    const response = await fetch(
+      scope === "dev" ? "/api/round/status?scope=dev" : "/api/round/status",
+      { cache: "no-store" },
+    );
     if (!response.ok) throw new Error("Round status unavailable. Please try again.");
     const round: PublicDepositRound = await response.json();
     if (!Number.isFinite(round.serverNow) || !Number.isInteger(round.roundId)) {
@@ -83,7 +89,7 @@ export function useDepositRound(initialRound: PublicDepositRound | null = null) 
       setClock(performance.now());
     }
     return next;
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     let active = true;
