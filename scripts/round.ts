@@ -6,6 +6,7 @@
  *   npm run round launch        generate the meme and create it on pump.fun
  *   npm run round distribute    send every depositor their share
  *   npm run round go            launch, then distribute
+ *   npm run round new           create this round's fresh deposit wallet
  *
  * Run it yourself when the countdown reaches zero. Nothing here is scheduled.
  */
@@ -42,6 +43,12 @@ import {
   ownerWalletRelativeFile,
 } from "../lib/round/owner-wallet.ts";
 import { scanDeposits } from "../lib/round/deposits.ts";
+import {
+  depositSecretBase58,
+  depositWalletRelativeFile,
+  loadDepositWallet,
+  loadOrCreateDepositWallet,
+} from "../lib/round/deposit-wallet.ts";
 import { generateMeme } from "../lib/round/meme.ts";
 import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
 import { netBuyLamports } from "../lib/round/budget.ts";
@@ -86,6 +93,10 @@ const option = (name: string) => {
   const value = args[index + 1];
   return value && !value.startsWith("--") ? value : undefined;
 };
+
+/** `--data .round/archive/test-2026-09` runs a command against an archived season. */
+const dataDir = option("data");
+if (dataDir) process.env.ROUND_DATA_DIR = dataDir;
 
 const config = readRoundConfig();
 const requestedRound = Number(option("round"));
@@ -168,6 +179,30 @@ function signingWallet(record: RoundRecord | null): Keypair {
     : parseWallet(config.walletSecret);
 }
 
+/**
+ * The wallet people deposit into for this round, created with `round new`.
+ * Refuses to run when the site publishes a different address, because the
+ * scan would then miss every deposit.
+ */
+function roundDepositWallet(roundId: number): Keypair {
+  const wallet = loadDepositWallet(roundId);
+  if (!wallet) {
+    die(
+      `Round #${String(roundId).padStart(3, "0")} has no deposit wallet yet. ` +
+        "Run `npm run round -- new` and publish its address first.",
+    );
+  }
+  const published = process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS?.trim();
+  if (published && published !== wallet.publicKey.toBase58()) {
+    die(
+      `NEXT_PUBLIC_DEPOSIT_ADDRESS (${short(published)}) is not round ` +
+        `#${String(roundId).padStart(3, "0")}'s deposit wallet (${short(wallet.publicKey.toBase58())}). ` +
+        "The site and the scan must use the same address.",
+    );
+  }
+  return wallet;
+}
+
 async function fundOwnerWallet(
   depositWallet: Keypair,
   ownerWallet: Keypair,
@@ -196,13 +231,26 @@ async function fundOwnerWallet(
 /* ------------------------------- commands ------------------------------- */
 
 async function status() {
-  const wallet = config.walletSecret ? parseWallet(config.walletSecret) : null;
-  const balance = wallet ? await connection.getBalance(wallet.publicKey) : 0;
+  const mainWallet = config.walletSecret ? parseWallet(config.walletSecret) : null;
+  const roundWallet = loadDepositWallet(config.roundId);
+  const balance = roundWallet ? await connection.getBalance(roundWallet.publicKey) : 0;
   const record = loadRound(config.roundId);
+  const published = process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS?.trim();
 
   console.log(`\n${C.bold(`PREPUMP round #${String(config.roundId).padStart(3, "0")}`)}\n`);
-  console.log(`  Deposit wallet   ${wallet ? wallet.publicKey.toBase58() : C.red("not configured")}`);
-  console.log(`  Balance          ${wallet ? `${sol(balance)} SOL` : "—"}`);
+  console.log(
+    `  Deposit wallet   ${roundWallet ? roundWallet.publicKey.toBase58() : C.yellow("none yet — run `npm run round -- new`")}`,
+  );
+  if (roundWallet) {
+    console.log(`  Deposit key      ${depositWalletRelativeFile(config.roundId)} ${C.dim("(chmod 600)")}`);
+  }
+  console.log(`  Balance          ${roundWallet ? `${sol(balance)} SOL` : "—"}`);
+  if (roundWallet && published && published !== roundWallet.publicKey.toBase58()) {
+    console.log(C.red(`  Site address     ${published} ≠ deposit wallet · update NEXT_PUBLIC_DEPOSIT_ADDRESS`));
+  }
+  console.log(
+    `  Main wallet      ${mainWallet ? mainWallet.publicKey.toBase58() : C.red("not configured")} ${C.dim("(creator rewards destination)")}`,
+  );
   console.log(`  Opens            ${stamp(config.opensAt)}`);
   console.log(`  Closes           ${stamp(config.closesAt)}`);
   console.log(`  RPC              ${new URL(config.rpcUrl).host}`);
@@ -240,7 +288,7 @@ async function status() {
 
 async function scan() {
   requireWindow();
-  const wallet = parseWallet(config.walletSecret);
+  const wallet = roundDepositWallet(config.roundId);
   const existing = loadRound(config.roundId);
   if (existing?.launch) {
     die(
@@ -328,7 +376,7 @@ async function scan() {
 
 async function launch() {
   requireWindow();
-  const depositWallet = parseWallet(config.walletSecret);
+  const depositWallet = roundDepositWallet(config.roundId);
 
   let record = loadRound(config.roundId);
   if (record?.launch && !flag("force")) {
@@ -505,7 +553,7 @@ async function launch() {
   console.log(`  Mint             ${result.mint}`);
   console.log(`  Owner            ${ownerWallet.publicKey.toBase58()}`);
   console.log(`  Private key      ${ownerWalletRelativeFile(record.roundId)} ${C.dim("(chmod 600)")}`);
-  console.log(`  Show for import  npm run round -- owner --round ${record.roundId} --show-secret`);
+  console.log(`  Show for import  npm run round -- owner --round ${record.roundId} --show-secret${dataDir ? ` --data ${dataDir}` : ""}`);
   console.log(`  Transaction      https://solscan.io/tx/${result.signature}`);
   console.log(`  pump.fun         https://pump.fun/coin/${result.mint}\n`);
   return record;
@@ -880,6 +928,49 @@ async function rewardsAll() {
   console.log(`  Failed actions   ${failedActions}\n`);
 }
 
+/** Creates this round's fresh deposit wallet and prints what to publish. */
+function newRound() {
+  const roundId = config.roundId;
+  const label = `#${String(roundId).padStart(3, "0")}`;
+  const existed = loadDepositWallet(roundId) !== null;
+  const wallet = loadOrCreateDepositWallet(roundId);
+  const address = wallet.publicKey.toBase58();
+
+  console.log(
+    `\n${C.bold(`Round ${label} deposit wallet`)}  ${existed ? C.dim("already existed, reused") : C.green("new")}`,
+  );
+  console.log(`  Address          ${address}`);
+  console.log(`  Private key      ${depositWalletRelativeFile(roundId)} ${C.dim("(chmod 600)")}`);
+  console.log(`  Show for import  npm run round -- deposit --round ${roundId} --show-secret${dataDir ? ` --data ${dataDir}` : ""}`);
+  console.log(`\n  ${C.bold("Set these in .env.local and at Vercel, then redeploy:")}\n`);
+  console.log(`  ROUND_ID=${roundId}`);
+  console.log(`  NEXT_PUBLIC_DEPOSIT_ADDRESS=${address}`);
+  if (config.opensAt && config.closesAt) {
+    console.log(`  ROUND_OPENS_AT=${new Date(config.opensAt).toISOString().replace(".000Z", "Z")}`);
+    console.log(`  ROUND_CLOSES_AT=${new Date(config.closesAt).toISOString().replace(".000Z", "Z")}`);
+  } else {
+    console.log(C.dim("  ROUND_OPENS_AT=…\n  ROUND_CLOSES_AT=…"));
+  }
+  console.log("");
+}
+
+function depositKey() {
+  const roundId = config.roundId;
+  const wallet = loadDepositWallet(roundId);
+  if (!wallet) die(`Round #${String(roundId).padStart(3, "0")} has no deposit wallet.`);
+
+  console.log(`\n${C.bold(`Deposit wallet · round #${String(roundId).padStart(3, "0")}`)}`);
+  console.log(`  Address          ${wallet.publicKey.toBase58()}`);
+  console.log(`  Private key      ${depositWalletRelativeFile(roundId)} ${C.dim("(chmod 600)")}`);
+  if (flag("show-secret")) {
+    console.log(`  Import secret    ${depositSecretBase58(roundId)}`);
+    console.log(C.yellow("  Keep this secret offline. Anyone with it controls the deposits."));
+  } else {
+    console.log(`  Show for import  npm run round -- deposit --round ${roundId} --show-secret${dataDir ? ` --data ${dataDir}` : ""}`);
+  }
+  console.log("");
+}
+
 function owner() {
   const roundId = config.roundId;
   const record = loadRound(roundId);
@@ -893,7 +984,7 @@ function owner() {
     console.log(`  Import secret    ${ownerSecretBase58(roundId)}`);
     console.log(C.yellow("  Keep this secret offline. Anyone with it controls the creator wallet."));
   } else {
-    console.log(`  Show for import  npm run round -- owner --round ${roundId} --show-secret`);
+    console.log(`  Show for import  npm run round -- owner --round ${roundId} --show-secret${dataDir ? ` --data ${dataDir}` : ""}`);
   }
   console.log("");
 }
@@ -910,6 +1001,7 @@ async function auto() {
   }
   // Check everything that could fail before committing to a long wait.
   requireWindow();
+  roundDepositWallet(config.roundId);
   parseWallet(config.walletSecret);
   if (loadRound(config.roundId)?.launch && !flag("force")) {
     die(`Round #${config.roundId} already launched. Bump ROUND_ID, or pass --force.`);
@@ -1043,6 +1135,8 @@ try {
   else if (command === "distribute") await distribute();
   else if (command === "rewards") await rewards();
   else if (command === "owner") owner();
+  else if (command === "new") newRound();
+  else if (command === "deposit") depositKey();
   else if (command === "auto") await auto();
   else if (command === "memes") await memes();
   else if (command === "go") {
@@ -1052,7 +1146,7 @@ try {
     console.log(
       [
         "",
-        "Usage: npm run round <status|scan|launch|distribute|rewards|owner|auto|go|memes> [options]",
+        "Usage: npm run round <status|new|scan|launch|distribute|rewards|owner|deposit|auto|go|memes> [options]",
         "",
         "  --yes         confirm a command that spends SOL",
         "  --now         launch before ROUND_CLOSES_AT",
@@ -1068,6 +1162,7 @@ try {
         "  --min-claim   minimum estimated net SOL for a bulk claim (default 0.00005)",
         "  --rewards     with `auto`, also claim creator fees after the launch",
         "  --round <id>  override automatic round selection",
+        "  --data <dir>  use another season, e.g. .round/archive/test-2026-09",
         "  --count <n>   with memes, how many previews to generate (max 12)",
         "  --mode <id>   with memes, trend|classic|brand|stock|workplace|animal|cursed",
         "  --theme <txt> with memes, a creative direction",

@@ -58,10 +58,19 @@ export type RoundRecord = {
   };
 };
 
-const DIR = path.join(process.cwd(), ".round");
+/**
+ * Base folder for round data. ROUND_DATA_DIR points the tools at another
+ * season, for example an archived set of test rounds.
+ */
+export function roundDataDir() {
+  const configured = process.env.ROUND_DATA_DIR?.trim();
+  return configured
+    ? path.resolve(process.cwd(), configured)
+    : path.join(process.cwd(), ".round");
+}
 
 export function roundFile(roundId: number) {
-  return path.join(DIR, `round-${String(roundId).padStart(3, "0")}.json`);
+  return path.join(roundDataDir(), `round-${String(roundId).padStart(3, "0")}.json`);
 }
 
 export function loadRound(roundId: number): RoundRecord | null {
@@ -75,11 +84,11 @@ export function loadRound(roundId: number): RoundRecord | null {
 export function listRounds(): RoundRecord[] {
   const records: RoundRecord[] = [];
   try {
-    for (const name of readdirSync(DIR)) {
+    for (const name of readdirSync(roundDataDir())) {
       if (!/^round-\d+\.json$/.test(name)) continue;
       try {
         records.push(
-          JSON.parse(readFileSync(path.join(DIR, name), "utf8")) as RoundRecord,
+          JSON.parse(readFileSync(path.join(roundDataDir(), name), "utf8")) as RoundRecord,
         );
       } catch {
         // Ignore a damaged record; commands still work with every healthy one.
@@ -124,12 +133,12 @@ export function loadUsedDepositSignatures(excludeRoundId: number) {
   const signatures = new Set<string>();
 
   try {
-    for (const name of readdirSync(DIR)) {
+    for (const name of readdirSync(roundDataDir())) {
       if (!/^round-\d+\.json$/.test(name)) continue;
 
       try {
         const record = JSON.parse(
-          readFileSync(path.join(DIR, name), "utf8"),
+          readFileSync(path.join(roundDataDir(), name), "utf8"),
         ) as RoundRecord;
         if (record.roundId === excludeRoundId) continue;
 
@@ -150,7 +159,7 @@ export function loadUsedDepositSignatures(excludeRoundId: number) {
 }
 
 export function saveRound(record: RoundRecord) {
-  mkdirSync(DIR, { recursive: true });
+  mkdirSync(roundDataDir(), { recursive: true });
   writeFileSync(roundFile(record.roundId), JSON.stringify(record, null, 2));
   return record;
 }

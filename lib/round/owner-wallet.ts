@@ -7,6 +7,7 @@ import {
 import path from "node:path";
 import bs58 from "bs58";
 import { Keypair } from "@solana/web3.js";
+import { roundDataDir } from "./store.ts";
 
 type StoredOwnerWallet = {
   address: string;
@@ -14,11 +15,11 @@ type StoredOwnerWallet = {
   createdAt: string;
 };
 
-const OWNER_DIR = path.join(process.cwd(), ".round", "owners");
+const ownerDir = () => path.join(roundDataDir(), "owners");
 
 export function ownerWalletFile(roundId: number) {
   return path.join(
-    OWNER_DIR,
+    ownerDir(),
     `round-${String(roundId).padStart(3, "0")}-owner.json`,
   );
 }
@@ -61,7 +62,7 @@ export function loadOrCreateOwnerWallet(roundId: number) {
     createdAt: new Date().toISOString(),
   };
 
-  mkdirSync(OWNER_DIR, { recursive: true, mode: 0o700 });
+  mkdirSync(ownerDir(), { recursive: true, mode: 0o700 });
   writeFileSync(ownerWalletFile(roundId), JSON.stringify(stored, null, 2), {
     encoding: "utf8",
     flag: "wx",
