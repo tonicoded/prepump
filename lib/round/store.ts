@@ -63,9 +63,11 @@ export type RoundRecord = {
  * season, for example an archived set of test rounds.
  */
 export function roundDataDir(configured = process.env.ROUND_DATA_DIR?.trim()) {
+  // Round data is read at runtime from outside the bundle; keep the build from
+  // tracing the whole project because of this dynamic path.
   return configured
-    ? path.resolve(process.cwd(), configured)
-    : path.join(process.cwd(), ".round");
+    ? path.resolve(/*turbopackIgnore: true*/ process.cwd(), configured)
+    : path.join(/*turbopackIgnore: true*/ process.cwd(), ".round");
 }
 
 export function roundFile(roundId: number, dataDir = roundDataDir()) {

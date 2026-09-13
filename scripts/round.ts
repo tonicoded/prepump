@@ -212,20 +212,51 @@ async function fundOwnerWallet(
   const missing = Math.max(0, requiredLamports - current);
   if (missing === 0) return { signature: undefined, lamports: 0 };
 
-  const transaction = new Transaction().add(
-    SystemProgram.transfer({
-      fromPubkey: depositWallet.publicKey,
-      toPubkey: ownerWallet.publicKey,
-      lamports: missing,
-    }),
-  );
+  const transfer = (lamports: number) =>
+    new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: depositWallet.publicKey,
+        toPubkey: ownerWallet.publicKey,
+        lamports,
+      }),
+    );
+
+  const [depositBalance, rentExempt, { blockhash, lastValidBlockHeight }] =
+    await Promise.all([
+      connection.getBalance(depositWallet.publicKey),
+      connection.getMinimumBalanceForRentExemption(0),
+      connection.getLatestBlockhash("confirmed"),
+    ]);
+  const probe = transfer(missing);
+  probe.feePayer = depositWallet.publicKey;
+  probe.recentBlockhash = blockhash;
+  const fee =
+    (await connection.getFeeForMessage(probe.compileMessage(), "confirmed")).value ??
+    5_000;
+
+  // A per-round deposit wallet has no spare SOL. Solana refuses to leave it
+  // with a balance above zero but below rent exemption, so when only a dust
+  // remainder would stay behind, move everything to the owner instead.
+  const leftover = depositBalance - fee - missing;
+  if (leftover < 0) {
+    die(
+      `The deposit wallet holds ${sol(depositBalance)} SOL, short of the ` +
+        `${sol(missing + fee)} SOL the owner wallet needs.`,
+    );
+  }
+  const lamports = leftover < rentExempt ? depositBalance - fee : missing;
+
+  const transaction = transfer(lamports);
+  transaction.feePayer = depositWallet.publicKey;
+  transaction.recentBlockhash = blockhash;
+  transaction.lastValidBlockHeight = lastValidBlockHeight;
   const signature = await sendAndConfirmTransaction(
     connection,
     transaction,
     [depositWallet],
     { commitment: "confirmed", maxRetries: 3 },
   );
-  return { signature, lamports: missing };
+  return { signature, lamports };
 }
 
 /* ------------------------------- commands ------------------------------- */
