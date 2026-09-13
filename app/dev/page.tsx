@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DevPortal } from "@/components/dev/DevPortal";
-import { getPublicDevConfig } from "@/lib/server/env";
+import { getServerEnv } from "@/lib/server/env";
+import { getDepositRound } from "@/lib/server/deposit-round";
 
 export const metadata: Metadata = {
-  title: "PREPUMP Dev Lab",
+  title: "PREPUMP · Mystery round",
   robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
 
 export default function DevPage() {
-  const config = getPublicDevConfig();
+  const config = getServerEnv();
   if (!config.portalEnabled) notFound();
-  return <DevPortal config={config} />;
+  return <DevPortal initialRound={getDepositRound()} />;
 }
-
