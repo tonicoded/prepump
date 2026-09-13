@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function DevPage() {
+export default async function DevPage() {
   const config = getServerEnv();
   if (!config.portalEnabled) notFound();
-  return <DevPortal initialRound={getDepositRound("dev")} />;
+  return <DevPortal initialRound={await getDepositRound("dev")} />;
 }

@@ -3,7 +3,7 @@ import { getDepositRound } from "@/lib/server/deposit-round";
 
 export const dynamic = "force-dynamic";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const env = getServerEnv();
   const scope =
     new URL(request.url).searchParams.get("scope") === "dev" ? "dev" : "home";
@@ -13,7 +13,7 @@ export function GET(request: Request) {
     return Response.json({ error: "Round unavailable." }, { status: 404 });
   }
   // Public read-only data: no balances, secrets or operator access token.
-  return Response.json(getDepositRound(scope), {
+  return Response.json(await getDepositRound(scope), {
     headers: { "Cache-Control": "no-store" },
   });
 }
