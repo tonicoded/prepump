@@ -4,7 +4,7 @@ import { HowItWorks } from "@/components/marketing/HowItWorks";
 export const metadata: Metadata = {
   title: "How It Works — PREPUMP",
   description:
-    "Prebuy a weekly mystery meme launch on Solana, revealed and launched automatically on pump.fun.",
+    "See how PREPUMP turns a pooled SOL deposit into a mystery pump.fun launch and distributes every purchased token proportionally.",
 };
 
 export default function Page() {
