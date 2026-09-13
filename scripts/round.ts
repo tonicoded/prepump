@@ -51,6 +51,7 @@ import {
   loadOrCreateDepositWallet,
 } from "../lib/round/deposit-wallet.ts";
 import { generateMeme } from "../lib/round/meme.ts";
+import { loadMemeHistory } from "../lib/round/meme-history.ts";
 import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
 import { netBuyLamports } from "../lib/round/budget.ts";
 import { createPumpToken, parseWallet } from "../lib/round/pumpfun.ts";
@@ -521,7 +522,7 @@ async function launch() {
     return runParticipantRound(config, record, depositWallet, ownerWallet, async () => {
       console.log("Generating meme after participant funding…");
       const meme = await generateMeme(config, process.env.ROUND_THEME, true,
-        normalizeMemeMode(process.env.ROUND_MEME_MODE));
+        normalizeMemeMode(process.env.ROUND_MEME_MODE), { avoid: loadMemeHistory() });
       if (!meme.imageDataUrl && !flag("no-art")) {
         throw new Error(meme.imageError ?? "Artwork failed. Buyer funds are saved; resume the same round.");
       }
@@ -633,6 +634,7 @@ async function launch() {
     process.env.ROUND_THEME,
     true,
     normalizeMemeMode(process.env.ROUND_MEME_MODE),
+    { avoid: loadMemeHistory() },
   );
   console.log(C.green(`${meme.name} ($${meme.ticker})`));
   if (meme.imageError) console.log(C.yellow(`  ${meme.imageError}`));
@@ -1196,6 +1198,7 @@ async function memes() {
   const count = Math.min(12, Math.max(1, Math.trunc(Number(option("count")) || 6)));
   const mode = normalizeMemeMode(option("mode") ?? process.env.ROUND_MEME_MODE);
   const theme = option("theme") ?? process.env.ROUND_THEME;
+  const history = loadMemeHistory();
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const dir = path.join(process.cwd(), ".round", "previews", stamp);
   mkdirSync(dir, { recursive: true });
@@ -1204,7 +1207,7 @@ async function memes() {
   console.log(C.dim("  Nothing is launched. This only spends OpenAI credits.\n"));
 
   const results = await Promise.allSettled(
-    Array.from({ length: count }, () => generateMeme(config, theme, true, mode)),
+    Array.from({ length: count }, () => generateMeme(config, theme, true, mode, { avoid: history })),
   );
 
   const tiles: { image: Buffer; caption: string[] }[] = [];

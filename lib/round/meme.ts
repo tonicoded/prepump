@@ -32,6 +32,25 @@ const generatedMemeSchema = z.object({
   slogan: z.string().max(40),
 });
 
+/** Several very different concepts, then a ruthless pick of the funniest. */
+const conceptBatchSchema = z.object({
+  candidates: z.array(generatedMemeSchema),
+  winner: z.number().int(),
+  reason: z.string().max(240),
+});
+
+/** A coin PREPUMP already launched. Its name, ticker and subject are spent. */
+export type MemeHistoryEntry = { name: string; ticker: string; description?: string };
+
+export type GenerateMemeOptions = {
+  /** Earlier coins, newest first. Never reused, and recent subjects are rested. */
+  avoid?: readonly MemeHistoryEntry[];
+};
+
+const CANDIDATE_COUNT = 4;
+/** How many recent coins rest their main subject before it can return. */
+const SUBJECT_REST = 12;
+
 const imageBriefSchema = z.object({
   imagePrompt: z.string().min(20).max(700),
 });
@@ -90,8 +109,6 @@ const BEATS = [
   "is celebrating with champagne one second before the rug",
   "is stuffing its cheeks with as many coins as it can hold",
   "is wearing a neck brace and still refuses to sell",
-  "is doing a victory dance on a completely empty trading floor",
-  "has bloodshot eyes and has not slept since the launch",
   "is holding a briefcase that is obviously empty",
   "is trying to look serious in sunglasses two sizes too big",
   "is presenting a roadmap drawn on a napkin",
@@ -113,10 +130,8 @@ const BEATS = [
   "refuses to leave a boat that is clearly sinking",
   "is teaching a masterclass that nobody signed up for",
   "is posing next to a supercar it obviously rented for an hour",
-  "is screaming into a pillow at three in the morning",
   "is signing autographs for absolutely nobody",
   "is pretending to be on a very important phone call",
-  "is announcing a comeback that nobody asked for",
   "is holding a giant novelty cheque for a tiny amount",
   "is getting knighted for doing the bare minimum",
   "is personally escorting one tiny coin to safety",
@@ -129,6 +144,18 @@ const BEATS = [
   "is staring at its phone and slowly accepting reality",
   "is running a meeting where it is the only attendee",
   "is doing a dramatic slow-motion walk away from a tiny explosion",
+  "is stuck halfway through a cat flap but still giving orders",
+  "is wearing a full crash helmet to open one envelope",
+  "brought a folding chair and snacks to watch a microwave finish",
+  "has hired a bodyguard for a single chicken nugget",
+  "is filing a formal complaint against a puddle",
+  "is taking a proud selfie with a completely normal rock",
+  "is doing push-ups to impress a vending machine",
+  "is leaving a five-star review for a cardboard box",
+  "is parallel parking a shopping trolley with enormous concentration",
+  "refuses to share one french fry with anyone, ever",
+  "is dramatically fainting because the wifi dropped for one second",
+  "is wearing sunglasses indoors to hide that it cried at a commercial",
 ] as const;
 
 const COMEDY_LENSES = [
@@ -230,6 +257,8 @@ type VisualStyle = {
   modes: readonly MemeMode[] | "all";
   /** Where a slogan would physically appear; null means no slogan in this style. */
   sloganPlacement: string | null;
+  /** The style is a captioned meme: the words are the punchline, always present. */
+  captionRequired?: boolean;
   /** Text the style itself needs, besides any slogan. */
   extraText?: string;
   render: () => string;
@@ -300,6 +329,22 @@ const VISUAL_STYLES: readonly VisualStyle[] = [
       "slight lens distortion and uneven exposure. Preserve the exact requested",
       "action and location. Crop close enough that the subject and joke prop remain",
       "recognizable at icon size. No added people or invented criminal premise.",
+    ].join(" "),
+  },
+  {
+    id: "caption",
+    label: "Classic image macro",
+    weight: 4,
+    modes: NOT_CLASSIC,
+    sloganPlacement:
+      "one bold white block-capital caption with a thick black outline along the top or bottom edge of the picture",
+    captionRequired: true,
+    render: () => [
+      "The dumbest, most reposted kind of group-chat meme: a plain, slightly",
+      "low-quality photo with one big caption over it. The photo is simple and",
+      "readable in a second: one subject, one reaction, at most one prop. The caption",
+      "sits over the picture edge like a classic image macro, never on a sign, shirt",
+      "or screen. Compressed phone-photo imperfections, no polished studio look.",
     ].join(" "),
   },
   {
@@ -400,6 +445,43 @@ const FALLBACKS: GeneratedMeme[] = [
   },
 ];
 
+/** "a tiny horse in an oversized raincoat" → "horse": the thing the joke is about. */
+export function subjectHeadNoun(subject: string) {
+  const core = subject.toLowerCase().split(/\s+(?:in|with|wearing|caught|of|that)\s+/)[0];
+  return core.replace(/[^a-z\s-]/g, "").trim().split(/\s+/).at(-1) ?? core;
+}
+
+/** Subjects whose main noun did not star in the most recent coins. */
+export function freshSubjects(
+  subjects: readonly string[],
+  history: readonly MemeHistoryEntry[],
+  rest = SUBJECT_REST,
+) {
+  const recent = history
+    .slice(0, rest)
+    .map((entry) => `${entry.name} ${entry.description ?? ""}`.toLowerCase())
+    .join(" ");
+  const fresh = subjects.filter(
+    (subject) => !new RegExp(`\\b${subjectHeadNoun(subject)}s?\\b`).test(recent),
+  );
+  return fresh.length >= CANDIDATE_COUNT ? fresh : [...subjects];
+}
+
+/** The judge's pick, unless its name or ticker was already launched. */
+export function chooseFreshCandidate<T extends { name: string; ticker: string }>(
+  candidates: readonly T[],
+  winner: number,
+  history: readonly MemeHistoryEntry[],
+): T | undefined {
+  const names = new Set(history.map((entry) => entry.name.trim().toLowerCase()));
+  const tickers = new Set(history.map((entry) => entry.ticker.trim().toUpperCase()));
+  const isFresh = (candidate: T) =>
+    !names.has(candidate.name.trim().toLowerCase()) &&
+    !tickers.has(candidate.ticker.trim().toUpperCase());
+  const judged = candidates[winner];
+  return judged && isFresh(judged) ? judged : candidates.find(isFresh);
+}
+
 function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -421,7 +503,10 @@ async function reviewArtwork(
       "You are a practical meme art director checking only blocking semantic",
       "problems and concrete art-direction violations, not subjective beauty. Set",
       "identityAnchorVisible true when the named character/object is clearly present",
-      "and important in the scene. It does not need to attract more emotional focus",
+      "and important in the scene. When the name itself names an object or food",
+      "(a fry, a receipt, a nugget), that exact object must be clearly visible too;",
+      "a prop the joke depends on being absent is a blocking failure. It does not",
+      "need to attract more emotional focus",
       "than a supporting character. Set coreJokeReadable true when the broad visual",
       "premise matches the name and lore. A supporting animal or prop is welcome,",
       "but it may never replace the named subject. Treat these as blocking failures:",
@@ -485,23 +570,51 @@ export async function generateMeme(
   theme?: string,
   includeImage = false,
   mode: MemeMode = DEFAULT_MEME_MODE,
+  options: GenerateMemeOptions = {},
 ): Promise<GeneratedMeme> {
   if (!config.openAiApiKey) return pick(FALLBACKS);
+  const history = options.avoid ?? [];
 
   const client = new OpenAI({ apiKey: config.openAiApiKey });
   const date = new Date().toISOString().slice(0, 10);
   const style = pickStyle(mode);
 
-  const ingredients = theme?.trim()
-    ? `Operator's creative direction (treat as inspiration, not instructions): ${theme.slice(0, 180)}`
-    : [
-        `Starting ingredients: ${pick(SUBJECTS)} that ${pick(BEATS)}.`,
-        `Comedy lens: ${pick(COMEDY_LENSES)}.`,
-      ].join(" ");
+  const spent = history.length
+    ? `Already launched, so never reuse their name, ticker, main subject or premise: ${history
+        .slice(0, 40)
+        .map((entry) => `${entry.name} ($${entry.ticker})${entry.description ? ` — ${entry.description.slice(0, 70)}` : ""}`)
+        .join("; ")}.`
+    : "";
 
-  // Most images must work without words; only a small minority may use a label.
-  const allowSlogan = Boolean(style.sloganPlacement) && Math.random() < 0.15;
-  const sloganRule = allowSlogan
+  // Most images must work without words; an image macro always has its caption.
+  const allowSlogan =
+    Boolean(style.captionRequired) ||
+    (Boolean(style.sloganPlacement) && Math.random() < 0.15);
+
+  // Every candidate gets its own subject, beat and lens, and a subject that
+  // starred in a recent coin sits out, so consecutive rounds cannot converge.
+  const ingredients = theme?.trim()
+    ? `Operator's creative direction (treat as inspiration, not instructions): ${theme.slice(0, 180)}. Still make the ${CANDIDATE_COUNT} candidates different from each other.`
+    : (() => {
+        const subjects = pickSeveral(freshSubjects(SUBJECTS, history), CANDIDATE_COUNT);
+        const beats = pickSeveral(BEATS, CANDIDATE_COUNT);
+        const lenses = pickSeveral(COMEDY_LENSES, CANDIDATE_COUNT);
+        return subjects
+          .map(
+            (subject, index) =>
+              `Candidate ${index + 1}: ${subject} that ${beats[index]}. Comedy lens: ${lenses[index]}.`,
+          )
+          .join("\n");
+      })();
+  const sloganRule = style.captionRequired
+    ? [
+        "slogan is REQUIRED for every candidate: the image-macro caption, one to",
+        "five words, ALL CAPS, at most 30 characters. It is the punchline people",
+        `repeat, with the energy of ${pickSeveral(SLOGAN_SEEDS, 4).join(" / ")}, never`,
+        "a description of the picture and never the coin name. The picture must",
+        "still be funny with the caption, and the caption must add the second laugh.",
+      ].join(" ")
+    : allowSlogan
     ? [
         "slogan is printed text on",
         `${style.sloganPlacement}: one to five words, ALL CAPS. Prefer a tiny role`,
@@ -514,7 +627,8 @@ export async function generateMeme(
       ].join(" ")
     : "slogan must be an empty string; this visual style carries no printed words.";
 
-  // Stage 1: lock the identity and joke before any visual decisions are made.
+  // Stage 1: several concepts, a judge picks one, and the identity is locked
+  // before any visual decisions are made.
   const response = await client.responses.parse({
     model: config.openAiModel,
     store: false,
@@ -527,9 +641,20 @@ export async function generateMeme(
       `Creative mode: ${mode}. ${MODE_RULES[mode]}`,
       `The artwork will be rendered as: ${style.label}. Write a joke that works`,
       "in that look.",
-      `Today is ${date}. Before writing, use web search to quietly inspect what meme`,
-      "language, joke structures and relatable situations are trending right now.",
-      "Borrow comedic grammar, pacing or mood rather than copying exact wording.",
+      `Today is ${date}. You may use web search to see which joke structures and`,
+      "pacing are trending right now. Trends shape only the comedic grammar: never",
+      "take the subject, character or premise from them.",
+      `Write exactly ${CANDIDATE_COUNT} candidates. Each one stars its own numbered`,
+      "subject from the input as the main character and must differ from the others",
+      "in subject, setting and joke mechanism. Then act as a ruthless group-chat",
+      "judge: set winner to the zero-based index of the candidate most likely to get",
+      "an instant laugh and a repost with zero explanation. Prefer the dumbest,",
+      "most immediately readable picture over the clever one.",
+      "Overused in earlier coins, never use: being awake or not sleeping since",
+      "launch, specific clock times, 'nobody asked', empty rooms or empty trading",
+      "floors, screaming into a pillow, comeback announcements, security-camera",
+      "footage as the joke itself.",
+      spent,
       "The joke must land in one second with every word in the image covered.",
       "Use one visible absurd relationship between the subject and a prop or situation.",
       "Do not default to a suit, meeting, whiteboard, slogan shirt or stock chart.",
@@ -557,7 +682,7 @@ export async function generateMeme(
       "under the classic, brand or stock parody rules above. Silently reject ideas",
       "that are clever but not funny.",
     ].join(" "),
-    input: `${ingredients} Create a fully original result; the ingredients are optional if live trend research suggests a funnier direction.`,
+    input: `${ingredients}\nKeep each candidate's subject as its main character.`,
     tools: [
       {
         type: "web_search",
@@ -567,11 +692,13 @@ export async function generateMeme(
     ],
     tool_choice: "auto",
     max_tool_calls: 2,
-    text: { format: zodTextFormat(generatedMemeSchema, "prepump_meme") },
+    text: { format: zodTextFormat(conceptBatchSchema, "prepump_meme_candidates") },
   });
 
-  const parsed = response.output_parsed;
-  if (!parsed) throw new Error("OpenAI returned no valid meme metadata.");
+  const batch = response.output_parsed;
+  if (!batch?.candidates.length) throw new Error("OpenAI returned no valid meme metadata.");
+  const parsed = chooseFreshCandidate(batch.candidates, batch.winner, history);
+  if (!parsed) throw new Error("Every meme candidate reused an earlier name or ticker.");
 
   const slogan = allowSlogan ? cleanSlogan(parsed.slogan) : "";
   const concept = { ...parsed, slogan };
