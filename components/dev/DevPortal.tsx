@@ -2,6 +2,7 @@
 
 import {
   DEPOSIT_PRESETS,
+  MIN_DEPOSIT_SOL,
   HYPE_LINES,
   STAGE_LABEL,
   remainingLabel,
@@ -155,7 +156,7 @@ export function DevPortal({ initialRound }: { initialRound: PublicDepositRound }
             Your tokens depend on your share of deposits; their value is not guaranteed.
           </p>
           <p className="round-deposit-disclosure">
-            Confirm before the deadline. Do not send directly after closing.
+            Minimum {MIN_DEPOSIT_SOL} SOL. Confirm before the deadline. Do not send directly after closing.
           </p>
           {lastDeposit && (
             <a

@@ -5,6 +5,9 @@ import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.
 import { browserRpcUrl, waitForConfirmation } from "@/lib/round/rpc";
 import { depositWindowState, type PublicDepositRound } from "@/lib/round/window";
 import { useWallet } from "@/providers/WalletProvider";
+import { MIN_DEPOSIT_LAMPORTS, MIN_DEPOSIT_SOL } from "@/lib/round/limits";
+
+export { MIN_DEPOSIT_SOL };
 
 export const DEPOSIT_PRESETS = [0.1, 0.5, 1, 5] as const;
 
@@ -138,8 +141,11 @@ export function useDepositRound(
       : 0;
   const parsedAmount = Number(amount);
   const lamports = Math.round(parsedAmount * 1e9);
+  // Below the minimum a deposit is left out of the round, so never send one.
   const validAmount =
-    Number.isFinite(parsedAmount) && Number.isSafeInteger(lamports) && lamports > 0;
+    Number.isFinite(parsedAmount) &&
+    Number.isSafeInteger(lamports) &&
+    lamports >= MIN_DEPOSIT_LAMPORTS;
   const stage: DepositStage = !open
     ? "idle"
     : remaining <= 10 * 60_000

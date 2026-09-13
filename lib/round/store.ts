@@ -24,6 +24,10 @@ export type RoundRecord = {
   scannedAt?: string;
   deposits: Deposit[];
   totalLamports: number;
+  /** SOL that arrived after the close. Not part of the round; refund by hand. */
+  lateDeposits?: Deposit[];
+  /** Window totals under the minimum deposit (or dust spam). Refund by hand. */
+  belowMinimum?: Deposit[];
   participantExecution?: ParticipantExecution;
 
   ownerWallet?: {

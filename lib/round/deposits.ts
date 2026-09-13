@@ -43,7 +43,13 @@ export type ScanResult = {
   excluded: number;
   /** Incoming transfers from PREPUMP's own generated owner wallets. */
   internalExcluded: number;
+  /** Transfers that landed after the close: not in the round, refund by hand. */
+  late: Deposit[];
+  /** Wallets whose window total stayed under the minimum, including dust spam. */
+  belowMinimum: Deposit[];
 };
+
+type ParsedLookup = Pick<Connection, "getSignaturesForAddress" | "getParsedTransaction">;
 
 /**
  * Reads every incoming SOL transfer to the deposit wallet inside the round
@@ -51,13 +57,15 @@ export type ScanResult = {
  * wallet signed itself are ignored.
  */
 export async function scanDeposits(
-  connection: Connection,
+  connection: ParsedLookup,
   wallet: PublicKey,
   opensAt: number,
   closesAt: number,
   onProgress?: (scanned: number, total?: number) => void,
   excludedSignatures: ReadonlySet<string> = new Set(),
   excludedSenders: ReadonlySet<string> = new Set(),
+  requestDelayMs = REQUEST_DELAY_MS,
+  minLamports = 0,
 ): Promise<ScanResult> {
   const address = wallet.toBase58();
   const openSeconds = Math.floor(opensAt / 1000);
@@ -65,6 +73,7 @@ export async function scanDeposits(
 
   // 1. Walk the signature history backwards until we pass the open time.
   const signatures: string[] = [];
+  const lateSignatures: string[] = [];
   let before: string | undefined;
   let exhausted = false;
 
@@ -81,7 +90,10 @@ export async function scanDeposits(
         exhausted = true;
         break;
       }
-      if (time && time > closeSeconds) continue;
+      if (time && time > closeSeconds) {
+        lateSignatures.push(entry.signature);
+        continue;
+      }
       signatures.push(entry.signature);
     }
 
@@ -100,12 +112,19 @@ export async function scanDeposits(
   // 2. Fetch transactions one at a time. getParsedTransactions turns a list
   // into an HTTP JSON-RPC batch, which the public mainnet endpoint frequently
   // rejects with 429 even for a modest wallet history.
-  const totals = new Map<string, { lamports: number; signatures: string[] }>();
+  type Totals = Map<string, { lamports: number; signatures: string[] }>;
+  const totals: Totals = new Map();
+  const lateTotals: Totals = new Map();
   let unattributedLamports = 0;
   let internalExcluded = 0;
 
-  for (let index = 0; index < pendingSignatures.length; index++) {
-    const signature = pendingSignatures[index];
+  const work = [
+    ...pendingSignatures.map((signature) => ({ signature, late: false })),
+    ...lateSignatures.map((signature) => ({ signature, late: true })),
+  ];
+
+  for (let index = 0; index < work.length; index++) {
+    const { signature, late } = work[index];
     const tx = await withRetry("reading transaction", () =>
       connection.getParsedTransaction(signature, {
         maxSupportedTransactionVersion: 0,
@@ -133,13 +152,14 @@ export async function scanDeposits(
           });
 
           if (!sender) {
-            unattributedLamports += credited;
+            if (!late) unattributedLamports += credited;
           } else if (excludedSenders.has(sender)) {
             // Creator-reward sweeps and other PREPUMP-internal transfers are
             // operational funds returning home, never participant deposits.
-            internalExcluded += 1;
+            if (!late) internalExcluded += 1;
           } else {
-            const current = totals.get(sender) ?? {
+            const bucket = late ? lateTotals : totals;
+            const current = bucket.get(sender) ?? {
               lamports: 0,
               signatures: [],
             };
@@ -147,19 +167,24 @@ export async function scanDeposits(
             current.signatures.push(
               tx.transaction.signatures[0] ?? signature,
             );
-            totals.set(sender, current);
+            bucket.set(sender, current);
           }
         }
       }
     }
 
-    onProgress?.(index + 1, pendingSignatures.length);
-    if (index + 1 < pendingSignatures.length) await sleep(REQUEST_DELAY_MS);
+    if (!late) onProgress?.(index + 1, pendingSignatures.length);
+    if (index + 1 < work.length && requestDelayMs > 0) await sleep(requestDelayMs);
   }
 
-  const deposits: Deposit[] = [...totals.entries()]
-    .map(([wallet, value]) => ({ wallet, ...value }))
-    .sort((a, b) => b.lamports - a.lamports);
+  const toDeposits = (map: Totals): Deposit[] =>
+    [...map.entries()]
+      .map(([wallet, value]) => ({ wallet, ...value }))
+      .sort((a, b) => b.lamports - a.lamports);
+  // The minimum applies to a wallet's total, so two small top-ups still count.
+  const grouped = toDeposits(totals);
+  const deposits = grouped.filter((d) => d.lamports >= minLamports);
+  const belowMinimum = grouped.filter((d) => d.lamports < minLamports);
 
   return {
     deposits,
@@ -168,5 +193,7 @@ export async function scanDeposits(
     scanned: pendingSignatures.length,
     excluded,
     internalExcluded,
+    late: toDeposits(lateTotals),
+    belowMinimum,
   };
 }

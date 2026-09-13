@@ -44,6 +44,7 @@ import {
   ownerWalletRelativeFile,
 } from "../lib/round/owner-wallet.ts";
 import { scanDeposits } from "../lib/round/deposits.ts";
+import { MIN_DEPOSIT_LAMPORTS, MIN_DEPOSIT_SOL } from "../lib/round/limits.ts";
 import {
   depositSecretBase58,
   depositWalletRelativeFile,
@@ -156,6 +157,12 @@ const stamp = (ms: number) =>
   ms ? new Date(ms).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "not set";
 
 const FUNDING_TX_FEE_LAMPORTS = 10_000;
+/**
+ * A wallet prompt confirmed just before the deadline can land in a block a
+ * few seconds after it. Launching waits this long past the close, and the
+ * scan counts those transfers too.
+ */
+const CLOSE_GRACE_MS = 30_000;
 
 
 function die(message: string): never {
@@ -346,13 +353,13 @@ async function scan() {
 
   console.log(`\n${C.bold("Scanning deposits")}`);
   console.log(`  ${wallet.publicKey.toBase58()}`);
-  console.log(`  ${stamp(config.opensAt)} → ${stamp(config.closesAt)}\n`);
+  console.log(`  ${stamp(config.opensAt)} → ${stamp(config.closesAt)} ${C.dim("(+30s for transfers confirmed at the deadline)")}\n`);
 
   const result = await scanDeposits(
     connection,
     wallet.publicKey,
     config.opensAt,
-    config.closesAt,
+    config.closesAt + CLOSE_GRACE_MS,
     (done, total) =>
       process.stdout.write(
         `\r  ${done}${total === undefined ? "" : `/${total}`} transactions inspected…   `,
@@ -363,6 +370,8 @@ async function scan() {
         record.ownerWallet ? [record.ownerWallet.address] : [],
       ),
     ),
+    undefined,
+    MIN_DEPOSIT_LAMPORTS,
   );
   process.stdout.write("\r".padEnd(48) + "\r");
 
@@ -389,8 +398,41 @@ async function scan() {
   }
   record.deposits = result.deposits;
   record.totalLamports = result.totalLamports;
+  record.lateDeposits = result.late;
+  record.belowMinimum = result.belowMinimum;
   record.scannedAt = new Date().toISOString();
   saveRound(record);
+
+  const realBelowMinimum = result.belowMinimum.filter((d) => d.lamports >= 1_000_000);
+  const dust = result.belowMinimum.length - realBelowMinimum.length;
+  if (dust > 0) {
+    console.log(C.dim(`  Ignored ${dust} dust transfer${dust === 1 ? "" : "s"} under 0.001 SOL (spam).`));
+  }
+  if (realBelowMinimum.length > 0) {
+    console.log(
+      C.yellow(
+        `  ${realBelowMinimum.length} wallet${realBelowMinimum.length === 1 ? "" : "s"} sent less than ` +
+          `the ${MIN_DEPOSIT_SOL} SOL minimum. Not in this round; refund by hand:`,
+      ),
+    );
+    for (const small of realBelowMinimum) {
+      console.log(C.yellow(`    ${small.wallet}  ${sol(small.lamports)} SOL`));
+    }
+    console.log("");
+  }
+
+  if (result.late.length > 0) {
+    console.log(
+      C.yellow(
+        `  ${result.late.length} wallet${result.late.length === 1 ? "" : "s"} sent SOL after the close. ` +
+          "Not in this round; refund by hand:",
+      ),
+    );
+    for (const late of result.late) {
+      console.log(C.yellow(`    ${late.wallet}  ${sol(late.lamports)} SOL`));
+    }
+    console.log("");
+  }
 
   if (result.deposits.length === 0) {
     console.log(C.yellow("  No deposits found in this window.\n"));
@@ -433,11 +475,17 @@ async function launch() {
   if (record?.launch && !record.participantExecution && !flag("force")) {
     die(`Round #${config.roundId} already launched: ${record.launch.mint}. Pass --force to launch again.`);
   }
-  if (Date.now() < config.closesAt && !flag("now")) {
-    die(`The round closes at ${stamp(config.closesAt)}. Pass --now to launch early.`);
+  if (Date.now() < config.closesAt + CLOSE_GRACE_MS && !flag("now")) {
+    die(
+      `The round closes at ${stamp(config.closesAt)}; launch from 30s after that. ` +
+        "Pass --now to launch early.",
+    );
   }
 
-  record = record?.scannedAt ? record : await scan();
+  // Always rescan right before launching. An earlier scan (a peek during the
+  // round, or a run that stopped) would miss everything that arrived later.
+  // Only a frozen participant plan keeps its list.
+  record = record?.participantExecution ? record : await scan();
   if (!record) die("Nothing to launch.");
 
   const ownerWallet = loadOrCreateOwnerWallet(record.roundId);
@@ -1096,8 +1144,8 @@ async function auto() {
   console.log(`  Then             scan → launch → distribute${flag("rewards") ? " → rewards" : ""}`);
   console.log(`  ${C.dim("Leave this running. Ctrl-C to stop.")}\n`);
 
-  while (Date.now() < config.closesAt) {
-    const left = config.closesAt - Date.now();
+  while (Date.now() < config.closesAt + CLOSE_GRACE_MS) {
+    const left = config.closesAt + CLOSE_GRACE_MS - Date.now();
     const h = Math.floor(left / 3_600_000);
     const m = Math.floor((left % 3_600_000) / 60_000);
     const sec = Math.floor((left % 60_000) / 1000);

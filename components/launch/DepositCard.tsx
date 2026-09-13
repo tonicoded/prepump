@@ -2,6 +2,7 @@
 
 import {
   DEPOSIT_PRESETS,
+  MIN_DEPOSIT_SOL,
   HYPE_LINES,
   STAGE_LABEL,
   remainingLabel,
@@ -174,7 +175,7 @@ export function DepositCard() {
       )}
 
       <p className="deposit-disclosure">
-        Real SOL transfers · launch costs come out of the pool · token value not guaranteed
+        Min {MIN_DEPOSIT_SOL} SOL · real SOL transfers · launch costs come out of the pool · token value not guaranteed
       </p>
       {lastDeposit && (
         <a
