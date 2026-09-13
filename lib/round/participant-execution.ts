@@ -131,7 +131,6 @@ async function execute(
     if (config.devCutPercent !== 0) {
       throw new Error("Individual buys require DEV_CUT_PERCENT=0; each user receives their own purchased tokens.");
     }
-    if (!config.pinataJwt) throw new Error("PINATA_JWT is required before funding buyers; the old pump.fun IPFS upload is no longer supported.");
     if (!Number.isFinite(config.slippage) || config.slippage <= 0 || config.slippage > 50) {
       throw new Error("Individual buys require explicit slippage above 0 and at most 50 percent.");
     }
