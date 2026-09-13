@@ -263,6 +263,9 @@ type VisualStyle = {
   captionRequired?: boolean;
   /** The style brings its own cast instead of the shared animals and objects. */
   subjects?: readonly string[];
+  /** Situations for this style instead of the shared staged beats and lenses. */
+  beats?: readonly string[];
+  lens?: string;
   /** Replaces the default "animal, statue or object" casting rule. */
   conceptRule?: string;
   /** Text the style itself needs, besides any slogan. */
@@ -438,6 +441,47 @@ const VISUAL_STYLES: readonly VisualStyle[] = [
       "posed as the famous-name pun with one or two props. Absolutely no human face,",
       "human body parts, skin or tattoos, and nothing that resembles a real person.",
       "Compressed phone-photo imperfections, no studio polish.",
+    ].join(" "),
+  },
+  {
+    id: "plain-animal",
+    label: "Plain relatable animal photo",
+    weight: 5,
+    modes: NOT_CLASSIC,
+    sloganPlacement: null,
+    subjects: [
+      "a baby monkey", "a cat", "a dog", "a hamster", "a raccoon", "a capybara",
+      "a pug", "a duck", "a goat", "an otter", "a frog", "a parrot", "a sloth",
+      "a seal", "a squirrel", "a hedgehog", "a penguin", "a bunny", "a cow",
+    ],
+    beats: [
+      "is looking down at a phone", "is sitting inside a cardboard box",
+      "is staring at an open laptop", "is holding one french fry",
+      "is lying face down on the floor", "is sitting in a shopping basket",
+      "is peeking over the edge of a table", "is sitting on a keyboard",
+      "is hugging a stuffed toy", "is sitting in a salad bowl",
+      "is eating one noodle", "is asleep on a laptop", "is staring into an open fridge",
+      "is sitting in a laundry basket", "is watching a washing machine spin",
+    ],
+    lens: "plain relatable deadpan photo, no staging",
+    conceptRule: [
+      "The joke is a plain, real-looking photo of the animal doing one very human",
+      "everyday thing (scrolling a phone, sitting in a box, staring at a laptop,",
+      "holding one snack) with a relatable deadpan expression. No costume, no extra",
+      "props, no absurd staging: the plainness is the joke. Ignore any costume,",
+      "accessory or cut-out direction elsewhere. This style replaces the",
+      "usual naming rules: the name is written like viral meme coins such as",
+      "dogwifhat, all lowercase, words mashed together and lazily misspelled by",
+      "sound, describing exactly what is in the picture (apeonfone, catinabox).",
+      "Never reuse an existing famous coin name. The ticker is the key word of that",
+      "name. Tagline and description stay short and deadpan.",
+    ].join(" "),
+    render: () => [
+      "A plain, natural, sharp photo of the real animal doing that one thing, on a",
+      "simple neutral background or an ordinary surface, like a viral animal photo",
+      "people repost without context. Realistic fur and anatomy, soft natural light.",
+      "No costume, no accessories, no text, no collage and no dramatic staging; this",
+      "overrides any costume or cut-out direction elsewhere.",
     ].join(" "),
   },
   {
@@ -621,6 +665,8 @@ async function reviewArtwork(
       "exaggerated expressions, odd scale or obvious Photoshop compositing. A crowned",
       "cat with a mop and a raincoat horse raising its hooves are approved anatomy.",
       "Statues, skeletons and pixel sunglasses are also allowed, not human extras.",
+      "In the Plain relatable animal photo style, any costume, vest, hat, glasses or",
+      "other clothing on the animal is a blocking failure; the correction removes it.",
       "In the Famous-name pun photo style, any human face, human body part, skin,",
       "tattoo or resemblance to a real person is a blocking failure.",
       "In the Ugly MS Paint drawing style, wrong anatomy, lopsided features and",
@@ -699,8 +745,10 @@ export async function generateMeme(
         const subjects = style.subjects
           ? pickSeveral(style.subjects, CANDIDATE_COUNT)
           : pickSeveral(freshSubjects(SUBJECTS, history), CANDIDATE_COUNT);
-        const beats = pickSeveral(BEATS, CANDIDATE_COUNT);
-        const lenses = pickSeveral(COMEDY_LENSES, CANDIDATE_COUNT);
+        const beats = pickSeveral(style.beats ?? BEATS, CANDIDATE_COUNT);
+        const lenses = style.lens
+          ? Array.from({ length: CANDIDATE_COUNT }, () => style.lens!)
+          : pickSeveral(COMEDY_LENSES, CANDIDATE_COUNT);
         return subjects
           .map(
             (subject, index) =>
