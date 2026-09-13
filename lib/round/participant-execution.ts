@@ -89,9 +89,18 @@ async function signTransfer(connection: Connection, from: Keypair, to: PublicKey
   return signedAction(tx);
 }
 
+export type ParticipantOptions = {
+  /**
+   * The creator is the operator's permanent main wallet, which always holds
+   * SOL of its own. The round still pays its own creation costs into it.
+   */
+  persistentOwner?: boolean;
+};
+
 export async function runParticipantRound(
   config: RoundConfig, record: RoundRecord, depositWallet: Keypair, owner: Keypair,
   generate: () => Promise<TokenDraft & { tagline: string }>,
+  options: ParticipantOptions = {},
 ) {
   mkdirSync(roundDataDir(), { recursive: true });
   const lock = path.join(roundDataDir(), `round-${record.roundId}.execution.lock`);
@@ -106,7 +115,7 @@ export async function runParticipantRound(
     if (record.ownerWallet?.address !== owner.publicKey.toBase58()) {
       throw new Error("Owner changed before execution lock was acquired.");
     }
-    await execute(config, record, depositWallet, owner, generate);
+    await execute(config, record, depositWallet, owner, generate, options);
   } finally { process.removeListener("exit", release); release(); }
   return record;
 }
@@ -114,6 +123,7 @@ export async function runParticipantRound(
 async function execute(
   config: RoundConfig, record: RoundRecord, depositWallet: Keypair, owner: Keypair,
   generate: () => Promise<TokenDraft & { tagline: string }>,
+  options: ParticipantOptions,
 ) {
   const connection = new Connection(config.rpcUrl, "confirmed");
   const persist = () => { saveRound(record); };
@@ -122,7 +132,8 @@ async function execute(
       throw new Error("Cannot convert a started legacy round into individual buys.");
     }
     if (record.deposits.length === 0) throw new Error("No participants.");
-    if (await connection.getBalance(owner.publicKey) !== 0) {
+    // A fresh per-round owner must be empty; the main wallet never is.
+    if (!options.persistentOwner && await connection.getBalance(owner.publicKey) !== 0) {
       throw new Error("Unrecorded funds in the owner wallet. Reconcile the existing launch/funding before creating an individual plan.");
     }
     if (record.totalLamports !== record.deposits.reduce((sum, d) => sum + d.lamports, 0)) {

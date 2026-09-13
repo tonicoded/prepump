@@ -10,6 +10,8 @@ npm run round -- go --yes --now --last 60
 
 It freezes the deposits, reserves proportional shared launch costs, creates and saves each buyer key, funds the buyers and creator, generates the meme, creates the mint with a **zero creator buy**, submits the participant buys concurrently, then sends each buyer's actual tokens and unused buyer SOL to their original address. A successful payout also closes the temporary token account to reclaim its rent.
 
+The creator is always the main wallet (`LAUNCH_WALLET_SECRET_KEY`), so every coin's creator rewards collect in one vault. The round pays the creation costs into it; only the deposit wallet changes per round.
+
 Requirements: a published per-round deposit wallet, sufficient deposits for each buyer's costs, and `DEV_CUT_PERCENT=0`. Metadata goes to pump.fun's IPFS (no account needed) unless `PINATA_JWT` is set. Existing funded legacy rounds retain pooled execution. `--buy` and `--force` cannot override individual execution.
 
 ## Costs and execution

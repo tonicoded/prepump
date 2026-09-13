@@ -38,7 +38,6 @@ import {
   type RoundRecord,
 } from "../lib/round/store.ts";
 import {
-  loadOrCreateOwnerWallet,
   loadOwnerWallet,
   ownerSecretBase58,
   ownerWalletRelativeFile,
@@ -193,10 +192,22 @@ function blankRecord(depositWallet: string): RoundRecord {
   };
 }
 
+/** The permanent main wallet: creator of every new coin, home of all rewards. */
+const MAIN_WALLET_KEY_FILE = "LAUNCH_WALLET_SECRET_KEY";
+
+function mainWallet(): Keypair {
+  return parseWallet(config.walletSecret);
+}
+
+/** True when a round's creator is the main wallet rather than a per-round owner. */
+function usesMainCreator(record: RoundRecord) {
+  return !record.ownerWallet || record.ownerWallet.address === mainWallet().publicKey.toBase58();
+}
+
 function signingWallet(record: RoundRecord | null): Keypair {
-  return record?.ownerWallet
-    ? loadOwnerWallet(record.roundId, record.ownerWallet.address)
-    : parseWallet(config.walletSecret);
+  return record && !usesMainCreator(record)
+    ? loadOwnerWallet(record.roundId, record.ownerWallet!.address)
+    : mainWallet();
 }
 
 /**
@@ -300,7 +311,7 @@ async function status() {
     console.log(C.red(`  Site address     ${published} ≠ deposit wallet · update NEXT_PUBLIC_DEPOSIT_ADDRESS`));
   }
   console.log(
-    `  Main wallet      ${mainWallet ? mainWallet.publicKey.toBase58() : C.red("not configured")} ${C.dim("(creator rewards destination)")}`,
+    `  Main wallet      ${mainWallet ? mainWallet.publicKey.toBase58() : C.red("not configured")} ${C.dim("(creator of every new coin · rewards)")}`,
   );
   console.log(`  Opens            ${stamp(config.opensAt)}`);
   console.log(`  Closes           ${stamp(config.closesAt)}`);
@@ -488,21 +499,25 @@ async function launch() {
   record = record?.participantExecution ? record : await scan();
   if (!record) die("Nothing to launch.");
 
-  const ownerWallet = loadOrCreateOwnerWallet(record.roundId);
+  // Every new coin is created by the main wallet, so all creator rewards land
+  // in one place. Rounds that already have their own owner keep it.
+  const ownerWallet = signingWallet(record);
   record.ownerWallet = record.ownerWallet ?? {
     address: ownerWallet.publicKey.toBase58(),
-    keyFile: ownerWalletRelativeFile(record.roundId),
+    keyFile: MAIN_WALLET_KEY_FILE,
     createdAt: new Date().toISOString(),
   };
   if (record.ownerWallet.address !== ownerWallet.publicKey.toBase58()) {
     die("The saved owner key does not match this round's owner address.");
   }
+  const persistentOwner = usesMainCreator(record);
   // New rounds use one buy wallet per real depositor. Never switch funded legacy rounds.
   if (record.participantExecution || !record.ownerWallet.fundingSignature) {
     if (flag("force") || option("buy") !== undefined) {
       die("--force and --buy are unavailable for individual participant execution.");
     }
     if (!flag("yes")) die("Add --yes to fund participant wallets and execute real purchases.");
+    console.log(`  Creator          ${ownerWallet.publicKey.toBase58()} ${C.dim(persistentOwner ? "(main wallet)" : "(round owner)")}`);
     return runParticipantRound(config, record, depositWallet, ownerWallet, async () => {
       console.log("Generating meme after participant funding…");
       const meme = await generateMeme(config, process.env.ROUND_THEME, true,
@@ -514,7 +529,7 @@ async function launch() {
         name: meme.name, symbol: meme.ticker, description: meme.description,
         tagline: meme.tagline, imageDataUrl: meme.imageDataUrl,
       };
-    });
+    }, { persistentOwner });
   }
 
   saveRound(record);
@@ -687,7 +702,8 @@ async function distribute() {
     }
     if (!flag("yes")) die("Add --yes to resume participant buys and payouts.");
     await runParticipantRound(config, record, roundDepositWallet(record.roundId), signingWallet(record),
-      async () => { throw new Error("Saved meme is missing; resume using go."); });
+      async () => { throw new Error("Saved meme is missing; resume using go."); },
+      { persistentOwner: usesMainCreator(record) });
     return;
   }
   const wallet = signingWallet(record);
@@ -891,8 +907,9 @@ async function rewardsAll() {
 
   const depositWallet = parseWallet(config.walletSecret);
   const launchedRounds = listRounds().filter((record) => record.launch);
-  const ownerRounds = launchedRounds.filter((record) => record.ownerWallet);
-  const hasLegacyCreator = launchedRounds.some((record) => !record.ownerWallet);
+  // Coins created by the main wallet share its one creator vault.
+  const ownerRounds = launchedRounds.filter((record) => !usesMainCreator(record));
+  const hasLegacyCreator = launchedRounds.some((record) => usesMainCreator(record));
   if (launchedRounds.length === 0) {
     die("No launched rounds were found.");
   }
@@ -1103,6 +1120,12 @@ function owner() {
   const roundId = config.roundId;
   const record = loadRound(roundId);
   if (!record?.ownerWallet) die(`Round #${roundId} has no separate owner wallet.`);
+  if (usesMainCreator(record)) {
+    console.log(`\n${C.bold(`Creator · round #${String(roundId).padStart(3, "0")}`)}`);
+    console.log(`  Address          ${record.ownerWallet.address} ${C.dim("(main wallet)")}`);
+    console.log(`  Private key      ${MAIN_WALLET_KEY_FILE} in .env.local\n`);
+    return;
+  }
   const wallet = loadOwnerWallet(roundId, record.ownerWallet.address);
 
   console.log(`\n${C.bold(`Owner wallet · round #${String(roundId).padStart(3, "0")}`)}`);
