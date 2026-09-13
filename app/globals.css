@@ -754,10 +754,33 @@ a {
 }
 
 .round-countdown {
-  border: 1px solid #3a624b;
+  --bar-a: #2fe28b;
+  --bar-b: #8ef77e;
+  --bar-glow: rgb(47 226 139 / 0.65);
+  --bar-edge: var(--color-pump-400);
+  --bar-speed: 0.9s;
+  border: 3px solid #fffdf0;
   border-radius: 12px;
-  padding: clamp(0.9rem, 3vw, 1.25rem);
-  background: linear-gradient(135deg, #14291d, #101613);
+  padding: clamp(0.8rem, 2.4vh, 1.15rem) clamp(0.85rem, 3vw, 1.25rem);
+  background: #0d130f;
+  box-shadow: 4px 4px 0 var(--bar-edge);
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+.round-countdown[data-stage="hot"] {
+  --bar-a: #ff8a2b;
+  --bar-b: #ffd36b;
+  --bar-glow: rgb(255 138 43 / 0.7);
+  --bar-edge: #ff8a2b;
+  --bar-speed: 0.6s;
+}
+.round-countdown[data-stage="critical"] {
+  --bar-a: #ff4d4d;
+  --bar-b: #ffe678;
+  --bar-glow: rgb(255 77 77 / 0.8);
+  --bar-edge: #ffe678;
+  --bar-speed: 0.35s;
+  border-color: #ffe678;
+  animation: round-shake 2.4s ease-in-out infinite;
 }
 .round-countdown-heading {
   display: flex;
@@ -767,24 +790,147 @@ a {
   gap: 0.5rem;
   font-family: var(--font-mono);
 }
-.round-countdown-heading span { font-size: 0.7rem; letter-spacing: 0.12em; color: #c2d8c9; }
-.round-countdown-heading strong { font-size: clamp(1.1rem, 5vw, 2rem); font-variant-numeric: tabular-nums; color: #b0ffc9; }
-.round-time-track { height: 24px; margin-top: 0.8rem; overflow: hidden; border-radius: 6px; background: #080e0a; border: 1px solid #42694d; }
-.round-time-fill {
-  height: 100%;
-  background: repeating-linear-gradient(110deg, #63ee8b 0 15px, #a9ffb3 15px 30px);
-  background-size: 64px 100%;
-  box-shadow: 0 0 18px #66ff8a66;
-  transition: width 0.25s linear;
-  animation: round-stripes 3s linear infinite;
+.round-stage {
+  display: inline-block;
+  transform: rotate(-1.5deg);
+  border: 2px solid #080a09;
+  background: var(--bar-a);
+  box-shadow: 2px 2px 0 #fffdf0;
+  padding: 0.2rem 0.5rem;
+  color: #080a09;
+  font-size: clamp(0.62rem, 1.3vh, 0.72rem);
+  font-weight: 900;
+  letter-spacing: 0.14em;
 }
-.round-countdown[data-urgent="true"] { border-color: #ffe678; }
-.round-countdown[data-urgent="true"] strong { color: #ffe678; }
-.round-countdown p, .round-deposit-disclosure { font-size: 0.75rem; line-height: 1.6; color: #c3cec6; }
-.round-countdown p { margin-top: 0.7rem; }
-@keyframes round-stripes { to { background-position: 64px 0; } }
+.round-countdown[data-stage="idle"] .round-stage {
+  background: #1c2a21;
+  box-shadow: none;
+  color: #c2d8c9;
+  border-color: #3a624b;
+}
+.round-countdown[data-stage="critical"] .round-stage {
+  animation: round-blink 0.9s steps(2, end) infinite;
+}
+.round-countdown-heading strong {
+  color: #fffdf0;
+  font-size: clamp(1.25rem, min(5vw, 4.2vh), 2.3rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-shadow: 3px 3px 0 var(--bar-a);
+}
+.round-countdown[data-stage="critical"] .round-countdown-heading strong {
+  color: #ffe678;
+  text-shadow: 3px 3px 0 #ff4d4d;
+  animation: round-throb 1s ease-in-out infinite;
+}
+.round-time-track {
+  position: relative;
+  height: clamp(24px, 4.2vh, 34px);
+  margin-top: clamp(0.6rem, 1.6vh, 0.85rem);
+  overflow: hidden;
+  border: 3px solid #fffdf0;
+  border-radius: 999px;
+  background: #06080a;
+}
+.round-time-fill {
+  position: relative;
+  height: 100%;
+  min-width: 18px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--bar-a) 0 12px, var(--bar-b) 12px 24px);
+  background-size: 34px 34px;
+  box-shadow: 0 0 22px var(--bar-glow), inset 0 -4px 0 rgb(0 0 0 / 0.18);
+  transition: width 0.25s linear;
+  animation: round-stripes var(--bar-speed) linear infinite;
+}
+.round-time-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.55) 45%, transparent 70%);
+  background-size: 220% 100%;
+  animation: round-shimmer 2.2s ease-in-out infinite;
+}
+.round-time-spark {
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  z-index: 2;
+  width: clamp(16px, 2.8vh, 22px);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0 30%, var(--bar-b) 55%, transparent 72%);
+  box-shadow: 0 0 16px 6px var(--bar-glow);
+  animation: round-spark 0.7s ease-in-out infinite;
+}
+.round-time-ticks {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+}
+.round-time-ticks span {
+  border-right: 2px solid rgb(8 10 9 / 0.35);
+}
+.round-time-ticks span:last-child {
+  border-right: 0;
+}
+.round-hype-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: clamp(0.5rem, 1.4vh, 0.7rem);
+}
+.round-time-percent {
+  flex: 0 0 auto;
+  border: 2px solid var(--bar-a);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  color: var(--bar-b);
+  font-family: var(--font-mono);
+  font-size: clamp(0.58rem, 1.2vh, 0.7rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.round-hype {
+  min-width: 0;
+  color: #e6f2ea;
+  font-size: clamp(0.72rem, 1.6vh, 0.85rem);
+  font-weight: 800;
+  line-height: 1.4;
+  animation: round-hype-in 0.45s var(--ease-out-quint) both;
+}
+.round-deposit-disclosure { font-size: 0.75rem; line-height: 1.6; color: #c3cec6; }
+@keyframes round-stripes { to { background-position: 34px 0; } }
+@keyframes round-shimmer { 0% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+@keyframes round-spark {
+  0%, 100% { transform: translateY(-50%) scale(0.85); opacity: 0.85; }
+  50% { transform: translateY(-50%) scale(1.15); opacity: 1; }
+}
+@keyframes round-shake {
+  0%, 88%, 100% { transform: translate(0, 0); }
+  90% { transform: translate(-2px, 1px) rotate(-0.4deg); }
+  92% { transform: translate(2px, -1px) rotate(0.4deg); }
+  94% { transform: translate(-2px, 0) rotate(-0.3deg); }
+  96% { transform: translate(2px, 1px) rotate(0.3deg); }
+}
+@keyframes round-blink { 50% { background: #ffe678; } }
+@keyframes round-throb { 50% { transform: scale(1.06); } }
+@keyframes round-hype-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .round-time-fill { animation: none; transition: none; }
+  .round-time-fill,
+  .round-time-fill::after,
+  .round-time-spark,
+  .round-countdown,
+  .round-stage,
+  .round-countdown-heading strong,
+  .round-hype { animation: none !important; transition: none; }
 }
 
 .dev-machine {
@@ -1987,4 +2133,42 @@ a {
   100% {
     transform: translate3d(300%, 0, 0);
   }
+}
+
+/* Phones: the hype bar made the deposit card taller than the screen. */
+@media (max-width: 639px) {
+  .dev-stage { gap: 0.4rem; }
+  .dev-machine { gap: 0.45rem; padding: 0.75rem 0.8rem; }
+  .dev-tagline { display: none; }
+  .dev-art { width: clamp(3.75rem, 17vw, 5rem); }
+  .dev-ticker { font-size: clamp(1.2rem, 6vw, 1.6rem); }
+  .round-countdown { padding: 0.6rem 0.7rem; box-shadow: 3px 3px 0 var(--bar-edge); }
+  .round-countdown-heading strong { font-size: clamp(1.15rem, 6vw, 1.6rem); }
+  .round-time-track { height: 22px; margin-top: 0.5rem; border-width: 2px; }
+  .round-hype-row { margin-top: 0.45rem; }
+  .round-hype { font-size: 0.7rem; }
+  .round-time-percent { font-size: 0.56rem; }
+  .dev-buy input { font-size: 1.05rem; }
+  .dev-presets button { padding: 0.3rem 0; }
+  .dev-action { padding: 0.55rem 1rem; font-size: 0.8rem; }
+  .round-deposit-disclosure { font-size: 0.62rem; line-height: 1.35; }
+}
+@media (max-width: 639px) and (max-height: 700px) {
+  .dev-art { width: 3.25rem; }
+  .dev-name { display: none; }
+  .round-hype { display: none; }
+  .round-deposit-disclosure + .round-deposit-disclosure { display: none; }
+}
+
+/* Short laptop screens: trim the card so the round sticker is not clipped. */
+@media (min-width: 640px) and (max-height: 760px) {
+  .dev-stage { gap: 0.35rem; }
+  .dev-machine { gap: 0.4rem; padding-block: 0.7rem; }
+  .dev-tagline { display: none; }
+  .round-countdown { padding: 0.55rem 0.9rem; }
+  .round-time-track { height: 22px; margin-top: 0.45rem; }
+  .round-hype-row { margin-top: 0.4rem; }
+  .dev-action { padding-block: 0.55rem; }
+  .round-deposit-disclosure { font-size: 0.66rem; line-height: 1.35; }
+  .round-deposit-disclosure + .round-deposit-disclosure { display: none; }
 }

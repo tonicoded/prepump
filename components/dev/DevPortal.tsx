@@ -7,6 +7,22 @@ import { depositWindowState, type PublicDepositRound } from "@/lib/round/window"
 import { useWallet } from "@/providers/WalletProvider";
 
 const PRESETS = [0.1, 0.5, 1, 5];
+
+/** Hype about the reveal and the clock. Never about how much has been deposited. */
+const HYPE_LINES = [
+  "The meme is loading. Get in before it drops.",
+  "Nobody knows the coin yet. Not even the dev.",
+  "When this bar fills, the reveal happens.",
+  "Everyone enters blind. Be one of them.",
+  "One shot. One unknown meme. One chart.",
+  "Future you is watching this bar.",
+] as const;
+
+const STAGE_LABEL = {
+  charging: "MEME LOADING",
+  hot: "HEATING UP",
+  critical: "LAST CALL",
+} as const;
 const STATUS_MAX_AGE_MS = 20_000;
 type Snapshot = { round: PublicDepositRound; measuredAt: number };
 
@@ -79,7 +95,14 @@ export function DevPortal({ initialRound }: { initialRound: PublicDepositRound }
   const parsedAmount = Number(amount);
   const lamports = Math.round(parsedAmount * 1e9);
   const validAmount = Number.isFinite(parsedAmount) && Number.isSafeInteger(lamports) && lamports > 0;
-  const urgent = open && remaining <= 60_000;
+  const stage = !open
+    ? "idle"
+    : remaining <= 10 * 60_000
+      ? "critical"
+      : remaining <= 60 * 60_000
+        ? "hot"
+        : "charging";
+  const hypeIndex = Math.floor(clock / 3800) % HYPE_LINES.length;
 
   const buy = async () => {
     if (submitting.current) return;
@@ -159,21 +182,38 @@ export function DevPortal({ initialRound }: { initialRound: PublicDepositRound }
             </div>
           </div>
 
-          <section className="round-countdown" data-urgent={urgent} aria-label="Deposit window">
+          <section className="round-countdown" data-stage={stage} aria-label="Deposit window">
             <div className="round-countdown-heading">
-              <span>{phase === "UPCOMING" ? "DEPOSITS OPEN IN" : "DEPOSIT WINDOW"}</span>
+              <span className="round-stage">
+                {stage !== "idle"
+                  ? STAGE_LABEL[stage]
+                  : phase === "UPCOMING" ? "DEPOSITS OPEN IN" : "DEPOSIT WINDOW"}
+              </span>
               <strong>{phase === "UNSCHEDULED" ? "TO BE ANNOUNCED" :
                 phase === "LAUNCHED" || phase === "CLOSED" ? "CLOSED" :
                 !fresh ? "SYNCING…" : remainingLabel(remaining)}</strong>
             </div>
             <div className="round-time-track" role="progressbar" aria-label="Deposit window elapsed"
               aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
-              <div className="round-time-fill" style={{ width: `${progress}%` }} />
+              <div className="round-time-fill" style={{ width: `${progress}%` }}>
+                {stage !== "idle" && <span className="round-time-spark" aria-hidden />}
+              </div>
+              <div className="round-time-ticks" aria-hidden>
+                {Array.from({ length: 10 }, (_, index) => <span key={index} />)}
+              </div>
             </div>
-            <p>{phase === "CLOSED" || phase === "LAUNCHED"
-              ? "This round is closed. New deposit requests are disabled."
-              : phase === "UNSCHEDULED" ? "Deposits open when the next round is scheduled."
-              : "Deposits close the moment this bar is full."}</p>
+            <div className="round-hype-row">
+            <p key={stage === "idle" ? phase : hypeIndex} className="round-hype">
+              {phase === "CLOSED" || phase === "LAUNCHED"
+                ? "This round is closed. New deposit requests are disabled."
+                : phase === "UNSCHEDULED" ? "Deposits open when the next round is scheduled."
+                : stage === "idle" ? "Deposits close the moment this bar is full."
+                : HYPE_LINES[hypeIndex]}
+            </p>
+            {stage !== "idle" && (
+              <span className="round-time-percent">{Math.floor(progress)}% LOADED</span>
+            )}
+            </div>
           </section>
 
           {open ? (
