@@ -44,6 +44,7 @@ import {
 import { scanDeposits } from "../lib/round/deposits.ts";
 import { generateMeme } from "../lib/round/meme.ts";
 import { normalizeMemeMode } from "../lib/round/meme-modes.ts";
+import { netBuyLamports } from "../lib/round/budget.ts";
 import { createPumpToken, parseWallet } from "../lib/round/pumpfun.ts";
 import {
   allocate,
@@ -212,10 +213,8 @@ async function status() {
   console.log(`  pump.fun cut     ${config.buyFeePercent}%  ${C.dim("of the buy")}`);
   console.log(`  Reserve          ${config.reserveSol} SOL`);
   console.log(`  Dev cut          ${config.devCutPercent}%`);
-  console.log(`  Minimum wallet   ${C.bold(`${overhead.toFixed(4)} SOL`)} ${C.dim("+ whatever you want to buy with")}`);
-  if (wallet && balance / 1e9 < overhead) {
-    console.log(`  ${C.yellow(`Top up by ${(overhead - balance / 1e9).toFixed(4)} SOL before launching.`)}`);
-  }
+  console.log(`  Funding model    ${C.green("round deposits pay launch costs")}`);
+  console.log(`  Fixed launch     ${overhead.toFixed(4)} SOL ${C.dim("+ payout rent and buy fee")}`);
 
   if (record) {
     console.log(`\n  ${C.dim(roundFile(config.roundId))}`);
@@ -376,26 +375,42 @@ async function launch() {
     payoutLamports;
   const overhead = flatLamports / 1e9;
 
-  // Spending b on the buy costs b * (1 + fee), so the affordable buy is the
-  // free balance divided by that multiplier, not simply the free balance.
-  const multiplier = 1 + config.buyFeePercent / 100;
-  const spendableLamports = Math.floor(
-    Math.max(0, balance - flatLamports - FUNDING_TX_FEE_LAMPORTS) / multiplier,
+  const fixedRoundCosts = flatLamports + FUNDING_TX_FEE_LAMPORTS;
+  // By default, the participants' pool pays every launch cost. Existing SOL in
+  // the permanent wallet must never silently subsidize a round.
+  const poolFundedBuyLamports = netBuyLamports(
+    record.totalLamports,
+    fixedRoundCosts,
+    config.buyFeePercent,
+  );
+  const walletFundedBuyLamports = netBuyLamports(
+    balance,
+    fixedRoundCosts,
+    config.buyFeePercent,
   );
 
   const forced = Number(option("buy"));
   const targetLamports =
     Number.isFinite(forced) && forced >= 0
       ? Math.round(forced * 1e9)
-      : record.totalLamports;
+      : poolFundedBuyLamports;
 
-  const buyLamports = Math.max(0, Math.min(targetLamports, spendableLamports));
+  const buyLamports = Math.max(
+    0,
+    Math.min(targetLamports, walletFundedBuyLamports),
+  );
   const buySol = Math.floor(buyLamports / 1000) / 1e6;
 
-  if (balance < flatLamports + FUNDING_TX_FEE_LAMPORTS) {
+  if (!Number.isFinite(forced) && poolFundedBuyLamports <= 0) {
     die(
-      `Wallet holds ${sol(balance)} SOL. A launch needs about ${overhead.toFixed(6)} SOL ` +
-        `plus a funding transaction before any buy. Top it up.`,
+      `The ${pooledSol.toFixed(6)} SOL pool cannot cover the estimated ` +
+        `${(fixedRoundCosts / 1e9).toFixed(6)} SOL fixed launch and payout costs.`,
+    );
+  }
+  if (balance < fixedRoundCosts) {
+    die(
+      `The wallets currently hold ${sol(balance)} SOL, below the estimated ` +
+        `${(fixedRoundCosts / 1e9).toFixed(6)} SOL fixed costs. Re-scan the deposits.`,
     );
   }
 
@@ -404,6 +419,7 @@ async function launch() {
   console.log(`  Fresh owner      ${ownerWallet.publicKey.toBase58()}`);
   console.log(`  Owner key        ${ownerWalletRelativeFile(record.roundId)}`);
   console.log(`  Pooled           ${pooledSol.toFixed(4)} SOL from ${record.deposits.length} wallets`);
+  console.log(`  Funding model    ${C.green("participants pay all round costs")}`);
   console.log(
     `  Rent + fees      ${C.dim(`${overhead.toFixed(6)} SOL + ${config.buyFeePercent}% of the buy`)}`,
   );
@@ -411,9 +427,18 @@ async function launch() {
     `  ${C.dim(`of which ${(payoutLamports / 1e9).toFixed(6)} SOL is held back to pay ${record.deposits.length} depositor(s)`)}`,
   );
   console.log(`  Buying with      ${C.bold(`${buySol} SOL`)}${buySol === 0 ? C.dim("  (create only, no buy)") : ""}`);
+  if (!Number.isFinite(forced)) {
+    console.log(
+      `  Deducted         ${C.dim(`${(pooledSol - buySol).toFixed(6)} SOL from the pool for estimated costs`)}`,
+    );
+  }
   if (Number.isFinite(forced)) console.log(C.dim(`  Buy forced with --buy ${forced}`));
-  if (!Number.isFinite(forced) && buySol < pooledSol) {
-    console.log(C.yellow(`  Capped by the wallet balance; ${(pooledSol - buySol).toFixed(4)} SOL of deposits is not being spent.`));
+  if (!Number.isFinite(forced) && buyLamports < poolFundedBuyLamports) {
+    console.log(
+      C.yellow(
+        `  Wallet balance is short; ${sol(poolFundedBuyLamports - buyLamports)} SOL of the intended buy cannot be funded.`,
+      ),
+    );
   }
 
   if (!flag("yes")) {
@@ -435,7 +460,8 @@ async function launch() {
   }
 
   const requiredOwnerLamports =
-    flatLamports + Math.ceil(buyLamports * multiplier);
+    flatLamports +
+    Math.ceil(buyLamports * (1 + config.buyFeePercent / 100));
   process.stdout.write("  Funding owner wallet… ");
   const funding = await fundOwnerWallet(
     depositWallet,

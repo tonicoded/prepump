@@ -43,16 +43,18 @@ secret — that prefix compiles the value into the browser bundle.
 
 ### The launch wallet
 
-Use a **burner**, funded with only what a launch costs. It signs the create
-transaction and pays for it. Roughly what it needs:
+The permanent deposit wallet receives the participant pool. Each round funds a
+fresh burner/owner wallet from that pool; no standing operator top-up is
+required. Roughly what is deducted before the net buy:
 
 | Item | Cost |
 | --- | --- |
-| Mint account rent + pump.fun create | ~0.02 SOL |
-| Dev buy | `PUMPFUN_DEV_BUY_SOL` |
+| Mint/metadata rent and launch budget | ~0.009 SOL |
+| Net dev buy | Whatever remains after round costs |
 | Priority fee | `PUMPFUN_PRIORITY_FEE` |
 
-The portal refuses to launch below that total and tells you the shortfall.
+The CLI refuses to launch when the participant pool itself cannot cover the
+fixed costs.
 
 ---
 
@@ -179,9 +181,10 @@ by you, when the countdown reaches zero. There is no scheduler and no bot: a
 Solana program cannot wake itself up, so something has to press the button, and
 that something is you.
 
-The deposit wallet **is** the launch wallet. People send SOL to that address
-during the round window; at T-0 the script reads what arrived, uses it to buy on
-pump.fun, and pays everyone back in tokens.
+People send SOL to the permanent deposit wallet during the round window. At
+T-0 the script reads what arrived, deducts the round's launch, fee, reserve and
+payout budget, funds a fresh owner wallet with that amount, uses the net
+remainder to buy on pump.fun, and pays everyone back in tokens.
 
 Set the window in `.env.local`:
 
@@ -228,9 +231,11 @@ npm run round -- go --yes --after 2026-09-12T18:15:00Z
 `--after` uses the supplied UTC timestamp as the opening time and the command's
 start time as the close. It cannot be combined with `--last`.
 
-**What `launch` does.** It rescans deposits, works out the buy amount as
-`min(total deposited, wallet balance − reserve)`, generates name, ticker,
-description and artwork, while preparing one fresh owner wallet for that round.
+**What `launch` does.** It rescans deposits and solves the buy amount as
+`(total deposits − fixed round costs) / (1 + pump.fun buy-fee percentage)`.
+Existing main-wallet SOL is not used to increase that default buy. It then
+generates name, ticker, description and artwork while preparing one fresh owner
+wallet for that round.
 Only after the artwork passes its checks does the permanent deposit wallet fund
 that owner with the buy plus required launch and payout costs. The fresh wallet
 creates the token, receives the initial buy, distributes the tokens and owns
@@ -323,8 +328,8 @@ when necessary with `--min-claim <sol>`.
 of their own in the transaction, so the sender cannot be identified. Those
 amounts are reported separately by `scan` and excluded from the split.
 
-**The floor on a launch.** Measured across three real launches, the cost on top
-of the buy is:
+**The floor on a launch.** Measured across three real launches, these costs are
+deducted from the participant pool before the buy:
 
 | Part | Cost |
 | --- | --- |
@@ -332,19 +337,20 @@ of the buy is:
 | pump.fun's cut of the dev buy | ~1.70% of the buy |
 | Priority fee | `PUMPFUN_PRIORITY_FEE` |
 
-So the wallet needs roughly `0.009 + buy × 1.02`. The defaults carry a little
-margin over the measured figures; tune them with `ROUND_CREATE_COST_SOL` and
-`PUMPFUN_BUY_FEE_PERCENT` if pump.fun changes its pricing.
+So the participant pool needs roughly `0.009 + payout rent + buy × 1.02`. The
+defaults carry a little margin over the measured figures; tune them with
+`ROUND_CREATE_COST_SOL` and `PUMPFUN_BUY_FEE_PERCENT` if pump.fun changes its
+pricing.
 
 Older guides quote a flat 0.02 SOL creation fee. That is out of date: pump.fun
 moved it into the first buy, and since the launch wallet *is* the first buyer it
 shows up as the percentage above rather than as a separate charge.
 
-`npm run round -- status` prints the minimum for your settings and how far short
-the wallet is.
+`npm run round -- status` prints the configured cost assumptions. The launch
+preview prints the pool, deductions and resulting net buy before signing.
 
-**A cheap test round.** Fund the wallet with ~0.02 SOL, send a dollar of SOL to
-it **from a different wallet**, then:
+**A cheap test round.** Send at least ~0.02 SOL to the deposit address **from a
+different wallet** so the pool can cover its own fixed costs, then:
 
 ```bash
 npm run round scan --last 60
