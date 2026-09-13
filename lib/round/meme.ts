@@ -61,16 +61,7 @@ const SUBJECTS = [
   "a shrimp", "a snail", "a jellyfish", "a tiny horse in an oversized raincoat",
   "an aquarium lobster wearing one cheap accessory", "a hippo in a tutu",
   "a sweaty guinea pig", "a pelican", "a goose with a grudge",
-  // people archetypes (never real, never famous)
-  "a chibi girl in a bandana and white oval sunglasses",
-  "a smug toddler", "a bodybuilder grandma", "a nervous office intern",
-  "a finance bro in a fleece vest", "a gym bro", "a suburban dad at a barbecue",
-  "a tired mall Santa", "a mime", "a lifeguard", "a wedding DJ",
-  "a substitute teacher", "a crossing guard", "a mall security guard",
-  "a wizard with a cheap plastic staff", "a pirate", "a cowboy",
-  "an astronaut", "a sumo wrestler", "a medieval knight in armour",
-  "a deep sea diver in an old brass helmet", "a Renaissance nobleman",
-  "a bootleg medieval king mascot",
+  // Human archetypes are reserved for explicit operator direction.
   // statues, toys and figures
   "a marble statue of a Greek god", "an ancient Egyptian bust",
   "a plastic garden gnome", "a rubber duck", "a nutcracker soldier",
@@ -178,17 +169,38 @@ const SLOGAN_SEEDS = [
 /*  Visual styles                                                          */
 /* ------------------------------------------------------------------------ */
 
+// Direction distilled from the public website memes and the approved mop cat /
+// raincoat horse. Borrow the visual grammar, not their exact subjects or scenes.
+const MEME_DIRECTION = [
+  "PREPUMP's visual language is a scrappy photographic internet meme: a strong",
+  "recognizable subject, an exaggerated reaction or deadpan expression, a cheap",
+  "costume/accessory and one immediately readable visual contradiction.",
+  "Approved examples of the mechanism, NOT scenes to copy: a regal cat doing",
+  "janitor work with a mop; a tiny horse in a raincoat acting like an important",
+  "delegate; a crying cat with a broken phone; a stone bust in pixel sunglasses;",
+  "a skeleton still waiting at an ancient computer. Invent a fresh combination.",
+  "Animals standing upright, wearing capes, crowns, ties or raincoats and handling",
+  "props with paws/hooves are welcome intentional Photoshop absurdity.",
+  "Keep the animal face, fur and paws/hooves recognizable. Do not graft on exposed",
+  "human skin or realistic human hands. Statues and skeletons are allowed subjects.",
+  "The joke is the mismatch between status, expression, outfit and situation,",
+  "not a slogan explaining a bland scene. One hero, not a busy website banner.",
+].join(" ");
+
 const PHOTO_STYLE = [
   "Make this look like a genuine found photograph or a crudely assembled internet meme,",
   "not an image-generation showcase. The subject must look physically real, with",
   "believable anatomy, natural fur, skin, fabric and material texture, and props",
-  "that obey gravity. Use the mundane imperfections of a compressed phone photo:",
+  "that have believable material texture. Impossible meme poses and cheap costume",
+  "composites are intentional; do not simplify them into a boring wildlife photo.",
+  "Use the mundane imperfections of a compressed phone photo:",
   "slightly awkward framing, hard direct flash, mild sensor noise, imperfect focus,",
   "uneven exposure and subtle JPEG artifacts. Keep the expression candid and oddly",
   "specific, not a polished mascot pose. If it is a collage, use visibly imperfect",
   "hand-cut edges; if it is a real scene, let the subject belong naturally in it.",
   "Slightly oversharpened, compressed, low-budget internet-post energy.",
-  "No cinematic composition, dramatic rim light, bokeh, glossy surfaces or",
+  "Let a raincoat look like shiny cheap nylon, not polished CGI.",
+  "No cinematic composition, dramatic rim light, bokeh, airbrushed surfaces or",
   "hyper-detailed fantasy styling. Not an illustration, cartoon or 3D render.",
 ].join(" ");
 
@@ -202,21 +214,6 @@ const CLASSIC_MEME_STYLE = [
   "smooth gradients, no glossy 3D and no generic AI mascot look. Keep the",
   "subject readable at tiny icon size.",
 ].join(" ");
-
-const PHOTO_BACKGROUNDS = [
-  "A real, slightly messy location that logically belongs to the joke; use environmental details as part of the punchline.",
-  "A depressing fluorescent office break room with beige walls, grey carpet and one irrelevant noticeboard.",
-  "A cheap community-hall event setup with burgundy curtains, folding chairs and harsh ceiling lights.",
-  "A late-night fast-food booth with faded red vinyl, off-white tiles and greasy reflections.",
-  "A cluttered ordinary kitchen photographed after midnight, lit by a refrigerator and one ugly warm ceiling bulb.",
-  "A supermarket aisle or stockroom with dull cream floors, battered cardboard and cold fluorescent lighting.",
-  "A wet municipal car park under a flat grey sky, with badly painted lines and one lonely traffic cone.",
-  "An awkward early-2000s school-photo backdrop: mottled navy and dusty purple fabric, visibly cheap and uneven.",
-  "A rough physical collage on wrinkled off-white paper with torn magazine fragments, tape shadows and photocopier grain.",
-  "A faded powder-blue studio sweep with scuffs, uneven flash falloff and lots of imperfect negative space.",
-  "A dark brown wood-panelled room with an old patterned carpet and direct disposable-camera flash.",
-  "A sun-bleached suburban garden or driveway with washed-out concrete and mundane household clutter.",
-] as const;
 
 const CLASSIC_BACKGROUNDS = [
   "Dirty off-white forum-image canvas with faint JPEG blocks and uneven grey smudges.",
@@ -244,169 +241,71 @@ const NOT_CLASSIC: readonly MemeMode[] = [
 
 const VISUAL_STYLES: readonly VisualStyle[] = [
   {
-    id: "hype-toy",
-    label: "Hype toy",
-    weight: 3,
-    modes: ["trend", "brand", "stock", "cursed"],
-    sloganPlacement: "the subject's tank top or T-shirt",
-    render: () =>
-      [
-        "Render the subject as a glossy chibi vinyl collectible toy figure with an",
-        "oversized head and a tiny body, shot like a product photo. It flies",
-        "diagonally upward in a superhero pose with one arm pointing forward, wrapped",
-        "in a crackling yellow-orange energy aura. Background: a bright blue",
-        "electronic stock-market ticker board with rows of blurred meaningless",
-        "numbers, a glowing jagged blue line chart and one huge orange arrow shooting",
-        "up to the top right. Loud, cheap, over-the-top hype-thumbnail energy.",
-      ].join(" "),
+    id: "photo",
+    label: "Candid phone snapshot",
+    weight: 6,
+    modes: NOT_CLASSIC,
+    sloganPlacement: null,
+    render: () => PHOTO_STYLE,
   },
   {
     id: "sticker",
-    label: "Green sticker",
+    label: "Rough photocollage",
+    weight: 4,
+    modes: NOT_CLASSIC,
+    sloganPlacement: null,
+    render: () => [
+      "A deliberately amateur photographic cut-and-paste collage, with uneven",
+      "scissor edges, mismatched scale and one obviously pasted-in prop.",
+      "A rough white cut-out outline and hard offset black shadow are welcome,",
+      "like PREPUMP website memes. No smooth vector mascot or polished ad layout.",
+      `Simple background in ${pick(["off-white", "dusty blue", "muted peach", "charcoal", "faded lavender", "pale yellow", "grass green"])}.`,
+      "Preserve the locked subject, action and prop; the collage is the medium, not a new joke.",
+    ].join(" "),
+  },
+  {
+    id: "disposable",
+    label: "Disposable-camera snapshot",
     weight: 3,
     modes: NOT_CLASSIC,
-    sloganPlacement: "a T-shirt or cap the subject wears",
-    render: () =>
-      [
-        "A photographic cut-out meme sticker made from real photographs crudely",
-        "combined: real subject, real clothes and props pasted on, slightly",
-        "mismatched lighting and scale, visible rough cut-out edges and a thick white",
-        "sticker outline around the whole subject. Flat bright acid-green background",
-        "with nothing else in the scene. Slightly oversaturated and oversharpened.",
-      ].join(" "),
+    sloganPlacement: "one small physical label on the main prop",
+    render: () => [
+      "An awkward disposable-camera snapshot, muted warm colors, slightly tilted",
+      "framing, hard flash falloff and ordinary lived-in surroundings belonging to",
+      "the requested scene. No added border, date stamp or props.",
+      "Believable materials and natural anatomy; no studio lighting or stock-photo polish.",
+    ].join(" "),
   },
   {
-    id: "photo",
-    label: "Found photo",
-    weight: 3,
-    modes: NOT_CLASSIC,
-    sloganPlacement: "a cheap printed T-shirt the subject wears",
-    render: () =>
-      [
-        `Background direction: ${pick(PHOTO_BACKGROUNDS)}`,
-        "Adapt the location to the joke but keep that palette. Never use a green,",
-        "lime or chroma-key background.",
-        PHOTO_STYLE,
-      ].join(" "),
-  },
-  {
-    id: "deep-fried",
-    label: "Deep fried",
-    weight: 2,
-    modes: NOT_CLASSIC,
-    sloganPlacement: "the subject's shirt",
-    render: () =>
-      [
-        "A deep-fried reaction image: extremely oversaturated, crushed contrast,",
-        "heavy JPEG artifacts and noise, glowing red laser eyes with bright lens-flare",
-        "stars, a warped fisheye bulge on the face and an orange-red colour cast. It",
-        "should look screenshotted and re-uploaded a hundred times. The subject is",
-        "still clearly recognizable underneath the damage.",
-      ].join(" "),
-  },
-  {
-    id: "flex",
-    label: "Fake rich flex",
-    weight: 2,
-    modes: ["trend", "brand", "stock", "animal", "workplace"],
-    sloganPlacement: "the subject's cap or T-shirt",
-    render: () =>
-      [
-        "A cheap fake-rich lifestyle flex photo taken with harsh flash at night in a",
-        "car park: the subject poses far too confidently in front of a shiny made-up",
-        "sports car that does not resemble any real brand or model, holding fanned-out",
-        "stacks of cash, with a gold chain",
-        "and sunglasses. Obvious bad photoshop edges. Tacky, embarrassing and trying",
-        "far too hard.",
-      ].join(" "),
-  },
-  {
-    id: "stock-photo",
-    label: "Cursed stock photo",
-    weight: 2,
-    modes: ["trend", "brand", "stock", "workplace", "cursed"],
-    sloganPlacement: "a whiteboard behind the subject",
-    render: () =>
-      [
-        "A cursed corporate stock photo: over-bright white office, forced smiles,",
-        "a thumbs-up or a stiff handshake, crisp blue shirts and a whiteboard, sterile",
-        "and slightly uncanny, as if pulled from a 2009 business brochure. The subject",
-        "is played completely straight inside it.",
-      ].join(" "),
-  },
-  {
-    id: "action-figure",
-    label: "Bootleg action figure",
-    weight: 2,
-    modes: ["trend", "brand", "stock", "cursed", "workplace"],
-    sloganPlacement: "the cardboard backer card, in big starburst lettering",
-    render: () =>
-      [
-        "A bootleg action figure of the subject sealed in a plastic blister pack on a",
-        "garish cardboard backer card, photographed on a supermarket shelf: cheap",
-        "moulded plastic, crooked paint, tiny useless accessories in their own",
-        "bubbles and loud starburst shapes. Clearly unlicensed and made in a hurry.",
-      ].join(" "),
-  },
-  {
-    id: "clipart",
-    label: "Office clip art",
+    id: "forum-doodle",
+    label: "Mouse-drawn reaction doodle",
     weight: 1,
-    modes: ["trend", "workplace", "cursed", "stock"],
+    modes: "all",
     sloganPlacement: null,
-    render: () =>
-      [
-        "An early-2000s office clip-art style 3D render: plasticky shiny shapes,",
-        "primary colours, a cheesy soft drop shadow and a plain white background,",
-        "like a free presentation clip-art image titled success. Deliberately dated",
-        "and corny.",
-      ].join(" "),
-  },
-  {
-    id: "renaissance",
-    label: "Renaissance portrait",
-    weight: 1,
-    modes: ["trend", "animal", "cursed", "brand"],
-    sloganPlacement: null,
-    render: () =>
-      [
-        "A classical Renaissance oil painting parody: dramatic chiaroscuro, cracked",
-        "varnish and a visible edge of an ornate gilded frame. The subject is posed",
-        "like nobility in a formal portrait, holding one anachronistic modern prop,",
-        "completely serious.",
-      ].join(" "),
+    render: () => [
+      CLASSIC_MEME_STYLE,
+      "Use the locked subject rather than substituting a familiar meme character.",
+      `Background: ${pick(CLASSIC_BACKGROUNDS)}`,
+    ].join(" "),
   },
   {
     id: "cctv",
     label: "Security camera",
     weight: 1,
-    modes: ["trend", "animal", "cursed", "workplace"],
+    modes: NOT_CLASSIC,
     sloganPlacement: null,
     extraText: "a small camera timestamp overlay in one corner",
-    render: () =>
-      [
-        "A grainy security-camera still from a high corner angle: fisheye",
-        "distortion, low resolution, blown highlights and motion blur, nearly",
-        "monochrome. The subject is caught mid-act doing something it should not.",
-      ].join(" "),
-  },
-  {
-    id: "claymation",
-    label: "Claymation",
-    weight: 1,
-    modes: ["trend", "animal", "cursed"],
-    sloganPlacement: "a tiny handmade sign",
-    render: () =>
-      [
-        "A stop-motion claymation still: visible thumbprints in the clay, a slightly",
-        "wonky handmade set, warm practical lighting and an expressive clay face",
-        "frozen mid-reaction.",
-      ].join(" "),
+    render: () => [
+      "A grainy security-camera still from a high corner angle, nearly monochrome,",
+      "slight lens distortion and uneven exposure. Preserve the exact requested",
+      "action and location. Crop close enough that the subject and joke prop remain",
+      "recognizable at icon size. No added people or invented criminal premise.",
+    ].join(" "),
   },
   {
     id: "classic",
     label: "Classic forum drawing",
-    weight: 1,
+    weight: 3,
     modes: ["classic"],
     sloganPlacement: null,
     render: () =>
@@ -448,7 +347,7 @@ function textRule(style: VisualStyle, slogan: string): string {
   if (slogan && style.sloganPlacement) {
     return [
       `The only intended words are "${slogan}", printed clearly and legibly on`,
-      `${style.sloganPlacement}. Spell it exactly as written.${extra} add no other`,
+      `${style.sloganPlacement}, exactly ONCE in the entire image. Never repeat it on clothing or in the background. Spell it exactly as written.${extra} add no other`,
       "words, letters, logos, brand marks or watermarks.",
     ].join(" ");
   }
@@ -520,7 +419,7 @@ async function reviewArtwork(
     store: false,
     instructions: [
       "You are a practical meme art director checking only blocking semantic",
-      "problems, not literal prompt compliance or general image beauty. Set",
+      "problems and concrete art-direction violations, not subjective beauty. Set",
       "identityAnchorVisible true when the named character/object is clearly present",
       "and important in the scene. It does not need to attract more emotional focus",
       "than a supporting character. Set coreJokeReadable true when the broad visual",
@@ -532,10 +431,18 @@ async function reviewArtwork(
       "stock character. Do NOT mark minor deviations as blocking: exact clock times,",
       "counts, room type, background props, color nuances or location details do not",
       "matter when the identity and broad joke work. The requested visual style may be",
-      "a toy, painting, clip art, claymation or drawing; that is intended, not a",
+      "a rough collage or crude drawing; visible handmade roughness is not a",
       "failure. The intended slogan, if any, is allowed text; a slogan so misspelled",
       "that it reads as gibberish is blocking, a slightly imperfect letter is not.",
-      "Other prominent accidental text or logos, or major anatomy failures, may be",
+      "Duplicating the slogan on multiple surfaces, prominent text when intendedSlogan",
+      "is null (except a small CCTV timestamp), photographic human extras, or exposed",
+      "human skin/hands grafted onto an animal/object are blocking failures.",
+      "Do NOT reject upright animals, costumes, capes, raincoats, paws holding props,",
+      "exaggerated expressions, odd scale or obvious Photoshop compositing. A crowned",
+      "cat with a mop and a raincoat horse raising its hooves are approved anatomy.",
+      "Statues, skeletons and pixel sunglasses are also allowed, not human extras.",
+      "Do not reject a deliberately crude drawn human archetype. Other prominent",
+      "accidental text or logos, or major anatomy failures, may be",
       "blocking; tiny imperfect details are not. Set blockingIssue true only for",
       "genuine launch-stopping problems. When blocking, correction must be one",
       "concise visible fix preserving what works. Otherwise say 'No correction needed.'",
@@ -592,16 +499,18 @@ export async function generateMeme(
         `Comedy lens: ${pick(COMEDY_LENSES)}.`,
       ].join(" ");
 
-  const sloganRule = style.sloganPlacement
+  // Most images must work without words; only a small minority may use a label.
+  const allowSlogan = Boolean(style.sloganPlacement) && Math.random() < 0.15;
+  const sloganRule = allowSlogan
     ? [
         "slogan is printed text on",
-        `${style.sloganPlacement}: two to five words, ALL CAPS. Make it the dumbest,`,
-        "loudest flex, cope or unsolicited life advice aimed at the viewer, the kind",
-        "of shirt a delusional person would genuinely wear. Examples of the energy,",
+        `${style.sloganPlacement}: one to five words, ALL CAPS. Prefer a tiny role`,
+        "label or deadpan prop detail, not viewer-directed life advice or a shirt.",
+        "Examples of the energy,",
         `not to copy: ${pickSeveral(SLOGAN_SEEDS, 5).join(" / ")}. Never use`,
         "corporate or legal jargon such as QUALITY CONTROL, NO COMMENT or COST",
-        "CONTROL. Include a slogan most of the time; return an empty string only when",
-        "words would genuinely kill the joke.",
+        "CONTROL. A slogan is optional: return an empty string unless the words add",
+        "a second joke. The main visual joke must still work with all text covered.",
       ].join(" ")
     : "slogan must be an empty string; this visual style carries no printed words.";
 
@@ -614,18 +523,25 @@ export async function generateMeme(
       "meme coin concept for a Solana mystery launch. Funny comes before",
       "marketable. It should feel like something people screenshot and repost,",
       "never like a startup mascot.",
+      MEME_DIRECTION,
       `Creative mode: ${mode}. ${MODE_RULES[mode]}`,
       `The artwork will be rendered as: ${style.label}. Write a joke that works`,
       "in that look.",
       `Today is ${date}. Before writing, use web search to quietly inspect what meme`,
       "language, joke structures and relatable situations are trending right now.",
       "Borrow comedic grammar, pacing or mood rather than copying exact wording.",
-      "The joke must land in one second without explanation: dumb, loud and obvious",
-      "beats clever. Think of a chibi toy flying over a stock chart in a tank top that",
-      "says STOP BEING POOR. No puns that need decoding, no accounting or legal",
+      "The joke must land in one second with every word in the image covered.",
+      "Use one visible absurd relationship between the subject and a prop or situation.",
+      "Do not default to a suit, meeting, whiteboard, slogan shirt or stock chart.",
+      "No puns that need decoding, no accounting or legal",
       "wordplay, no in-jokes that only make sense after reading the description.",
-      "Delusional confidence, flexing while broke, and main-character energy are",
-      "the core. Do not force slang. Avoid stale crypto phrases",
+      "Let the chosen comedy lens guide the joke: awkward timing, petty triumph,",
+      "unnecessary effort or deadpan absurdity, not always financial flexing.",
+      "Default to an animal, statue, skeleton or ordinary object, not a human cast.",
+      "Costumed upright animals and deliberately pasted-on props are encouraged.",
+      "Avoid a plant or appliance head grafted onto a human office worker. Human archetypes",
+      "requested by the operator must be clearly drawn, not photorealistic.",
+      "Do not force slang. Avoid stale crypto phrases",
       "like moon, diamond hands, HODL, wen, degen, rug, pump, bags and to the moon.",
       "The name is one or two words a twelve-year-old instantly gets, short, dumb,",
       "speakable and inseparable from the visual joke. Avoid generic formula names",
@@ -657,7 +573,7 @@ export async function generateMeme(
   const parsed = response.output_parsed;
   if (!parsed) throw new Error("OpenAI returned no valid meme metadata.");
 
-  const slogan = style.sloganPlacement ? cleanSlogan(parsed.slogan) : "";
+  const slogan = allowSlogan ? cleanSlogan(parsed.slogan) : "";
   const concept = { ...parsed, slogan };
 
   let meme: GeneratedMeme = {
@@ -674,6 +590,7 @@ export async function generateMeme(
       model: config.openAiModel,
       store: false,
       instructions: [
+        MEME_DIRECTION,
         "Turn a finalized meme-coin identity into one concrete image scene. The",
         "identity below is locked: never rename it, reinterpret its central noun or",
         "swap its main character/object for an easier animal. Start imagePrompt with",
@@ -682,15 +599,22 @@ export async function generateMeme(
         "specific prop. The scene must read at tiny coin-icon size, so use one main",
         "subject and at most one supporting character. The visual style is fixed",
         "separately; describe the subject, pose, expression, clothing and props that",
-        "suit it, in one or two sentences. If a slogan is given, print it on the",
-        "garment named for it, never on a sash, banner or ribbon, and do not invent",
-        "any other text. Never make clock",
+        "suit it, in one or two sentences. Keep the recognizable animal face and",
+        "paws/hooves, but allow upright poses, clothes and holding props.",
+        "Do not remove the funny costume or action in pursuit of strict realism.",
+        "Keep ordinary objects recognizable rather than giving them human bodies.",
+        "No background people. Statues and skeletons are fine.",
+        "Human archetypes must be crude drawings, never photographic humans.",
+        "If a slogan is given, place it ONLY ONCE at sloganPlacement. Otherwise",
+        "leave every surface blank. Do not print the name, ticker or tagline.",
+        "Make the visual punchline work without any writing. Never make clock",
         "times, precise counts or tiny background details essential to the joke. No",
         "camera or lighting terminology.",
       ].join(" "),
       input: JSON.stringify({
         mode,
         visualStyle: style.label,
+        sloganPlacement: slogan ? style.sloganPlacement : null,
         ...concept,
         slogan: slogan || null,
       }),
@@ -715,8 +639,13 @@ export async function generateMeme(
             ? `Mandatory correction after visual review: ${correction}`
             : "",
           renderDirection,
+          MEME_DIRECTION,
           text,
-          "No real people, no celebrities, no existing copyrighted characters.",
+          "No photographic humans, including background extras. Any requested human",
+          "archetype must be visibly mouse-drawn. Animal costumes and upright poses",
+          "are allowed; no exposed human skin or realistic human hands grafted onto them.",
+          "No corporate-stock-photo lighting, perfect smiles, glossy 3D mascots,",
+          "slogan-shirt template or duplicate captions. No celebrities.",
         ]
           .filter(Boolean)
           .join(" "),
